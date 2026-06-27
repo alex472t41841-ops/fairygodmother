@@ -1,0 +1,3122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Fairy godmother 代購後台</title>
+<!-- 導入 html2canvas 繪製對帳圖卡所需之開源庫 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ───── Theme & Layout ───── */
+:root {
+  --ticnote-brand:#26B2BF;--ticnote-badge:#79F2F2;--ticnote-line:#e5e7eb;
+  --ticnote-muted:#64748b;--ticnote-text:#0f172a;
+  /* App Colors - Earthy Minimal */
+  --bg:#fafaf9;--surface:#ffffff;--border:#e2e8f0;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;
+  --amber:#d97706;--amber-light:#fef3c7;--amber-border:#fbbf24;
+  --green:#166534;--green-bg:#f0fdf4;
+  --blue:#1e40af;--blue-bg:#eff6ff;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --warm-100:#f5f0eb;--warm-200:#ede5db;--warm-300:#d6c9b8;
+  --warm-400:#b5a08a;--warm-500:#8b7355;--warm-600:#6b5a42;
+  --nav-h:60px;--topbar-h:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+
+/* Topbar */
+.meta-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;border-bottom:1px solid var(--ticnote-line);background:#fff;position:sticky;top:0;z-index:200;height:var(--topbar-h)}
+.meta-brand,.meta-right{display:flex;align-items:center;gap:10px;min-width:0}
+.meta-logo{height:28px;width:28px;display:block;flex:0 0 auto;color:var(--warm-500)}
+.meta-divider{width:1px;height:16px;background:var(--ticnote-line);flex:0 0 auto}
+.meta-tagline{font-size:14px;font-weight:700;color:var(--warm-600);letter-spacing:.02em;white-space:nowrap}
+.meta-tag{display:inline-flex;align-items:center;min-height:20px;padding:2px 8px;border-radius:999px;background:rgba(139,115,85,.15);color:var(--warm-600);border:1px solid rgba(139,115,85,.25);font-size:10px;font-weight:800;letter-spacing:.06em;white-space:nowrap;text-transform:uppercase}
+.meta-date{color:var(--text-muted);font-size:11px;font-weight:500;white-space:nowrap}
+
+/* Layout Page Area */
+.app-wrap{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h))}
+.page-area{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h) + 12px)}
+
+/* Bottom Nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:#fff;border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--text-muted);transition:color .2s;font-size:10px;font-weight:600;letter-spacing:.02em;padding:6px 2px;position:relative;border:none;background:none}
+.nav-item svg{width:22px;height:22px;stroke-width:1.8;fill:none;stroke:currentColor}
+.nav-item.active{color:var(--warm-600)}
+.nav-item.active svg{stroke:var(--warm-600)}
+.nav-item.active::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--warm-500);border-radius:0 0 3px 3px}
+
+/* Pages */
+.page{display:none;padding:16px}
+.page.active{display:block}
+
+/* Cards */
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--text-secondary);letter-spacing:.03em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title svg{width:15px;height:15px;stroke:var(--warm-500);fill:none;stroke-width:2}
+.section-label{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+
+/* Metrics Row */
+.metrics-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.metric-box{background:var(--warm-100);border:1px solid var(--warm-200);border-radius:10px;padding:12px 10px;text-align:center}
+.metric-label{font-size:10px;color:var(--warm-500);font-weight:700;letter-spacing:.04em;margin-bottom:4px}
+.metric-val{font-family:'SF Mono','Fira Code',monospace;font-size:18px;font-weight:700;color:var(--text-primary);line-height:1}
+.metric-unit{font-size:10px;color:var(--text-muted);margin-top:2px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:.01em}
+.btn-primary{background:var(--warm-500);color:#fff}
+.btn-primary:hover{background:var(--warm-600)}
+.btn-outline{background:#fff;color:var(--warm-600);border:1px solid var(--warm-300)}
+.btn-outline:hover{background:var(--warm-100)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #fca5a5}
+.btn-success{background:var(--green-bg);color:var(--green);border:1px solid #86efac}
+.fab{position:fixed;top:calc(var(--topbar-h) + 14px);right:16px;width:40px;height:40px;border-radius:50%;background:var(--warm-500);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(107,90,66,.35);z-index:150;transition:background .15s}
+.fab:hover{background:var(--warm-600)}
+.fab svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.2}
+
+/* Forms */
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.form-control{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text-primary);background:#fff;outline:none;transition:border .15s;font-family:inherit}
+.form-control:focus{border-color:var(--warm-400)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select.form-control{cursor:pointer}
+
+/* Tags & Lists */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.badge-pending{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.badge-shipping{background:var(--blue-bg);color:var(--blue);border:1px solid #bfdbfe}
+.badge-payment{background:var(--amber-light);color:#92400e;border:1px solid var(--amber-border)}
+.badge-done{background:var(--green-bg);color:var(--green);border:1px solid #86efac}
+.badge-stock{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.list-item:last-child{border-bottom:none}
+.list-thumb{width:44px;height:44px;border-radius:8px;background:var(--warm-100);display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden}
+.list-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.list-thumb svg{width:20px;height:20px;stroke:var(--warm-400);fill:none;stroke-width:1.6}
+.list-info{flex:1;min-width:0}
+.list-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.list-right{text-align:right;flex:0 0 auto}
+.list-price{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:700;color:var(--warm-600)}
+
+/* Custom Alerts & Confirm modal */
+.toast-msg{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.9);color:#fff;padding:10px 18px;border-radius:50px;font-size:13px;font-weight:500;z-index:2000;box-shadow:0 10px 25px rgba(0,0,0,0.25);animation:fadeInOut 2.5s ease forwards}
+@keyframes fadeInOut{0%{opacity:0;transform:translate(-50%,20px)}10%{opacity:1;transform:translate(-50%,0)}90%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-20px)}}
+
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;display:none;align-items:center;justify-content:center;padding:24px}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:#fff;border-radius:16px;width:100%;max-width:320px;padding:20px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)}
+.confirm-title{font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text-primary)}
+.confirm-text{font-size:14px;color:var(--text-secondary);line-height:1.5;margin-bottom:20px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:10px}
+
+/* Sheets & Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .28s ease}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;cursor:pointer;padding:4px;color:var(--text-muted);font-size:20px;line-height:1}
+
+.modal-full{position:fixed;inset:0;background:#fff;z-index:400;display:none;flex-direction:column;overflow-y:auto}
+.modal-full.open{display:flex}
+.modal-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:10}
+.modal-header-btn{background:none;border:none;cursor:pointer;padding:6px;color:var(--text-secondary);display:flex;align-items:center}
+.modal-header-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.modal-header-title{flex:1;font-size:16px;font-weight:700;text-align:center;color:var(--text-primary)}
+.modal-body{padding:16px;flex:1}
+
+/* Tabs */
+.tab-bar{display:flex;gap:4px;background:var(--warm-100);padding:4px;border-radius:10px;margin-bottom:14px}
+.tab-btn{flex:1;padding:7px 6px;border-radius:7px;border:none;background:none;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab-btn.active{background:#fff;color:var(--warm-600);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+/* Misc */
+.calc-result{background:var(--warm-100);border:1px solid var(--warm-200);border-radius:10px;padding:14px;margin-top:10px}
+.calc-result-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0}
+.calc-result-label{font-size:12px;color:var(--text-secondary);font-weight:500}
+.calc-result-value{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:700;color:var(--text-primary)}
+.calc-result-value.highlight{color:var(--warm-600);font-size:16px}
+
+.chip-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chip-scroll::-webkit-scrollbar{display:none}
+.chip{padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:all .15s;flex:0 0 auto}
+.chip.active{background:var(--warm-500);color:#fff;border-color:var(--warm-500)}
+
+.proc-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.proc-row:last-child{border-bottom:none}
+.proc-qty-box{background:var(--warm-100);border-radius:8px;padding:6px 10px;font-family:'SF Mono','Fira Code',monospace;font-size:15px;font-weight:700;color:var(--warm-600);min-width:44px;text-align:center;flex:0 0 auto}
+.proc-check{width:24px;height:24px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:all .15s}
+.proc-check.checked{background:var(--warm-500);border-color:var(--warm-500)}
+.proc-check.checked svg{stroke:#fff}
+.proc-check svg{width:14px;height:14px;stroke:transparent;fill:none;stroke-width:2.5}
+
+.pl-table{width:100%;border-collapse:collapse;font-size:13px}
+.pl-table td{padding:8px 4px;border-bottom:1px solid var(--border)}
+.pl-table td:last-child{text-align:right;font-family:'SF Mono','Fira Code',monospace;font-weight:600}
+.pl-table .subtotal td{background:var(--warm-100);font-weight:700}
+.pl-table .total-row td{border-top:2px solid var(--warm-400);font-weight:800;font-size:14px;color:var(--warm-600)}
+
+.period-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f1f5f9}
+.period-dot{width:8px;height:8px;border-radius:50%;background:var(--warm-500);flex:0 0 auto}
+.period-name{font-size:14px;font-weight:600;color:var(--text-primary)}
+.period-dates{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+.setting-group{margin-bottom:16px}
+.setting-group-title{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;padding:0 2px}
+
+.project-banner{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.project-banner svg{width:18px;height:18px;stroke:var(--amber);fill:none;stroke-width:2;flex:0 0 auto}
+.project-banner p{font-size:13px;color:#92400e;font-weight:500}
+
+/* Login Screen */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px}
+.login-logo{width:64px;height:64px;background:var(--warm-500);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.login-logo svg{width:36px;height:36px;stroke:#fff;fill:none;stroke-width:1.8}
+.login-title{font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:6px;font-family:Georgia,'Times New Roman',serif}
+.login-sub{font-size:14px;color:var(--text-muted);margin-bottom:32px;text-align:center;line-height:1.6}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:360px}
+.login-divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.login-divider span{font-size:11px;color:var(--text-muted);font-weight:600}
+.btn-google{width:100%;background:#fff;color:var(--text-primary);border:1px solid var(--border);padding:11px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.btn-google:hover{background:#f8fafc}
+.btn-apple{width:100%;background:#000;color:#fff;border:none;padding:11px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;transition:opacity .15s}
+.btn-apple:hover{opacity:.85}
+
+.compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.compare-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 6px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;font-size:11px;font-weight:600;color:var(--text-secondary);gap:4px;transition:all .15s;text-decoration:none}
+.compare-btn:hover{border-color:var(--warm-400);background:var(--warm-100)}
+.compare-btn svg{width:20px;height:20px;stroke:var(--warm-400);fill:none;stroke-width:1.8}
+
+@media(max-width:640px){
+  .metrics-row{grid-template-columns:repeat(3,1fr);gap:8px}
+  .metric-val{font-size:15px}
+  .meta-date{display:none}
+}
+@media(min-width:641px){
+  .page-area{max-width:600px;margin:0 auto}
+  .bottom-nav{max-width:600px;left:50%;transform:translateX(-50%)}
+  .fab{right:calc(50% - 284px)}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOAST & CONFIRM MODALS ═══ -->
+<div id="toastContainer"></div>
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">確認動作</div>
+    <div class="confirm-text" id="confirmText">您確定要執行此操作嗎？</div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" onclick="handleConfirm(false)">取消</button>
+      <button class="btn btn-primary btn-sm" id="confirmYesBtn" onclick="handleConfirm(true)">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LOGIN SCREEN ═══ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22h12a2 2 0 0 0 2-2V8H4v12a2 2 0 0 0 2 2z" />
+      <path d="M16 8V6a4 4 0 0 0-8 0v2" />
+      <path d="M9 12l3-2 3 2-1.5 3h-3L9 12z" fill="rgba(255,255,255,0.25)" />
+    </svg>
+  </div>
+  <div class="login-title">Fairy godmother</div>
+  <div class="login-sub">私群代購後台管理系統<br>請登入以繼續使用</div>
+  <div class="login-card">
+    <div class="form-group">
+      <label>帳號 / 電子郵件</label>
+      <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label>密碼</label>
+      <input type="password" class="form-control" id="loginPwd" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doLogin()">登入後台</button>
+    <div class="login-divider"><span>或使用第三方登入</span></div>
+    <button class="btn-google" onclick="doLogin()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      使用 Google 登入
+    </button>
+    <button class="btn-apple" onclick="doLogin()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      使用 Apple 登入
+    </button>
+  </div>
+</div>
+
+<!-- ═══ CUSTOMER EXCLUSIVE PORTAL (對帳頁面) ═══ -->
+<div id="customerPortal" style="display:none; padding:16px;">
+  <div class="meta-bar" style="position:static; margin-bottom:16px;">
+    <div class="meta-brand">
+      <span class="meta-tagline">對帳專區</span>
+    </div>
+    <div class="meta-right">
+      <span class="meta-tag">客戶專屬</span>
+    </div>
+  </div>
+  <div class="page-area" id="portalBody"></div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="mainApp" style="display:none">
+
+<!-- Main App Topbar -->
+<div class="meta-bar">
+  <div class="meta-brand">
+    <svg class="meta-logo" viewBox="0 0 24 24" fill="none" stroke="var(--warm-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22h12a2 2 0 0 0 2-2V8H4v12a2 2 0 0 0 2 2z" />
+      <path d="M16 8V6a4 4 0 0 0-8 0v2" />
+      <path d="M9 12l3-2 3 2-1.5 3h-3L9 12z" fill="var(--warm-100)" />
+    </svg>
+    <div class="meta-divider"></div>
+    <span class="meta-tagline">Fairy godmother 代購</span>
+  </div>
+  <div class="meta-right">
+    <span class="meta-tag">專屬管理系統</span>
+    <span class="meta-date" id="r-date"></span>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn" onclick="openFAB()" title="快速新增">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- Page Content Area -->
+<div class="app-wrap">
+<div class="page-area" id="pageArea">
+
+  <!-- ─── PAGE 1: 管理/首頁 ─── -->
+  <div class="page active" id="page-home">
+    <div id="noPeriodBanner" class="project-banner" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>尚未選擇檔期。請先至「設定」建立專案檔期，才能進行商品/訂單/採購操作。</p>
+    </div>
+
+    <!-- Current Period -->
+    <div class="card" id="currentPeriodCard" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;letter-spacing:.04em;text-transform:uppercase">目前檔期</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:3px" id="currentPeriodName">—</div>
+        </div>
+        <span class="badge badge-pending" id="currentPeriodStatus">進行中</span>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics-row">
+      <div class="metric-box">
+        <div class="metric-label">營收</div>
+        <div class="metric-val" id="metricRevenue">0</div>
+        <div class="metric-unit">台幣 NT$</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">訂單數</div>
+        <div class="metric-val" id="metricOrders">0</div>
+        <div class="metric-unit">筆</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">毛利</div>
+        <div class="metric-val" id="metricProfit">0</div>
+        <div class="metric-unit">台幣 NT$</div>
+      </div>
+    </div>
+
+    <!-- Order Progress -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        訂單進度
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+        <div onclick="goToOrders('pending')" style="cursor:pointer">
+          <div style="font-size:20px;font-weight:800;color:#c2410c" id="cnt-pending">0</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">待處理</div>
+        </div>
+        <div onclick="goToOrders('shipping')" style="cursor:pointer">
+          <div style="font-size:20px;font-weight:800;color:var(--blue)" id="cnt-shipping">0</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">待出貨</div>
+        </div>
+        <div onclick="goToOrders('payment')" style="cursor:pointer">
+          <div style="font-size:20px;font-weight:800;color:#92400e" id="cnt-payment">0</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">待付款</div>
+        </div>
+        <div onclick="goToOrders('done')" style="cursor:pointer">
+          <div style="font-size:20px;font-weight:800;color:var(--green)" id="cnt-done">0</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">已結單</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Report -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        損益表
+      </div>
+      <table class="pl-table" id="plTable">
+        <tr><td>營業收入</td><td id="pl-revenue">NT$ 0</td></tr>
+        <tr><td>營業成本</td><td id="pl-cost">NT$ 0</td></tr>
+        <tr class="subtotal"><td>營業毛利</td><td id="pl-gross">NT$ 0</td></tr>
+        <tr><td>營業費用（運費等）</td><td id="pl-expense">NT$ 0</td></tr>
+        <tr class="subtotal"><td>營業利益</td><td id="pl-profit">NT$ 0</td></tr>
+        <tr><td>業外收支（折讓等）</td><td id="pl-other">NT$ 0</td></tr>
+        <tr class="total-row"><td>本期淨利</td><td id="pl-net">NT$ 0</td></tr>
+      </table>
+    </div>
+
+    <!-- Top Products -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        熱銷商品 Top 3
+      </div>
+      <div id="topProductsList">
+        <div class="empty-state" style="padding:20px 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <p>尚無訂單資料</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Customers -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        高貢獻客戶 Top 3
+      </div>
+      <div id="topCustomersList">
+        <div class="empty-state" style="padding:20px 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <p>尚無客戶資料</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Procurement Info -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        採購資訊摘要 (進行中)
+      </div>
+      <div id="procInfoHome">
+        <div class="empty-state" style="padding:20px 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg>
+          <p>尚無採購清單</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PAGE 2: 商品 ─── -->
+  <div class="page" id="page-products">
+    <div class="chip-scroll" id="categoryFilterChips" style="margin-bottom:12px">
+      <div class="chip active" onclick="filterProducts('all',this)">全部</div>
+    </div>
+    <div id="productsList">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <p>點擊右上角 + 新增第一個商品</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PAGE 3: 訂單 ─── -->
+  <div class="page" id="page-orders">
+    <div class="tab-bar" id="orderTabBar">
+      <button class="tab-btn active" onclick="switchOrderTab('pending',this)">待處理</button>
+      <button class="tab-btn" onclick="switchOrderTab('shipping',this)">待出貨</button>
+      <button class="tab-btn" onclick="switchOrderTab('payment',this)">待付款</button>
+      <button class="tab-btn" onclick="switchOrderTab('done',this)">已結單</button>
+    </div>
+    <div id="ordersList">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <p>此分類暫無訂單</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PAGE 4: 採購 ─── -->
+  <div class="page" id="page-purchase">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+        採購清單
+      </div>
+      <div id="purchaseList">
+        <div class="empty-state" style="padding:24px 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg>
+          <p>結單後系統將自動匯整採購清單</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        採購費用統計
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+        <span style="font-size:14px;color:var(--text-secondary)">已標記採購金額</span>
+        <span style="font-family:'SF Mono','Fira Code',monospace;font-size:18px;font-weight:800;color:var(--warm-600)" id="totalProcCost">NT$ 0</span>
+      </div>
+    </div>
+    <div style="background:var(--warm-100);border-left:3px solid var(--warm-400);padding:12px 14px;border-radius:0 8px 8px 0;margin-bottom:12px">
+      <p style="font-size:12px;color:var(--warm-600);font-weight:600;margin-bottom:4px">採購策略提醒</p>
+      <p style="font-size:12px;color:var(--text-secondary);line-height:1.6">若副戰場比價省下的金額，小於多跑一趟的車資與時間成本，建議直接在後台標示「斷貨/未買到」，系統將自動退款 or 取消該項目，保護你的時間與毛利。</p>
+    </div>
+  </div>
+
+  <!-- ─── PAGE 5: 設定 ─── -->
+  <div class="page" id="page-settings">
+    <!-- Store Info -->
+    <div class="setting-group">
+      <div class="setting-group-title">店家資訊</div>
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          <div id="logoDisplay" style="width:64px;height:64px;border-radius:14px;background:var(--warm-100);border:2px dashed var(--warm-300);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex:0 0 auto" onclick="document.getElementById('logoUpload').click()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warm-400)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="storeNameDisplay">Fairy godmother 代購</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">點擊更換 Logo</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:8px">
+            <label>寄件姓名</label>
+            <input type="text" class="form-control" id="storeShipName" placeholder="姓名">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>寄件電話</label>
+            <input type="tel" class="form-control" id="storeShipPhone" placeholder="09xx-xxx-xxx">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>寄件電子郵件</label>
+          <input type="email" class="form-control" id="storeShipEmail" placeholder="your@email.com">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bank -->
+    <div class="setting-group">
+      <div class="setting-group-title">匯款資料</div>
+      <div class="card" style="margin-bottom:0">
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="margin-bottom:0">
+            <label>銀行名稱</label>
+            <input type="text" class="form-control" id="bankName" placeholder="台灣銀行">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>帳號</label>
+            <input type="text" class="form-control" id="bankAccount" placeholder="帳號">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label>戶名</label>
+            <input type="text" class="form-control" id="bankHolder" placeholder="戶名">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>備註</label>
+            <input type="text" class="form-control" id="bankNote" placeholder="備註">
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="width:100%; margin-top: 14px; font-weight: 700; gap: 8px;" onclick="exportStoreCard()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          匯出店家及匯款資訊照片檔
+        </button>
+      </div>
+    </div>
+
+    <!-- Periods -->
+    <div class="setting-group">
+      <div class="setting-group-title">專案檔期管理</div>
+      <div class="card" style="margin-bottom:0">
+        <div id="periodListSetting"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="openAddPeriod()">+ 新增檔期</button>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="setting-group">
+      <div class="setting-group-title">商品分類管理</div>
+      <div class="card" style="margin-bottom:0">
+        <div id="categoryListSetting"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="openAddCategory()">+ 新增分類</button>
+      </div>
+    </div>
+
+    <!-- Currency -->
+    <div class="setting-group">
+      <div class="setting-group-title">國家 / 幣別設定</div>
+      <div class="card" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0">
+          <label>預設幣別</label>
+          <select class="form-control" id="defaultCurrency" onchange="saveSetting('defaultCurrency',this.value)">
+            <option value="TWD">台灣 TWD 台幣</option>
+            <option value="JPY">日本 JPY 日圓</option>
+            <option value="KRW">韓國 KRW 韓元</option>
+            <option value="USD">美國 USD 美元</option>
+            <option value="EUR">歐盟 EUR 歐元</option>
+            <option value="GBP">英國 GBP 英鎊</option>
+            <option value="CNY">中國 CNY 人民幣</option>
+            <option value="HKD">香港 HKD 港幣</option>
+            <option value="SGD">新加坡 SGD 新幣</option>
+            <option value="AUD">澳洲 AUD 澳幣</option>
+            <option value="THB">泰國 THB 泰銖</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;margin-top:10px">
+          <label>匯率（1 外幣 = ? 台幣）</label>
+          <input type="number" class="form-control" id="exchangeRate" placeholder="例如: 0.22（日圓）" step="0.0001" onchange="saveSetting('exchangeRate',this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Link Manager -->
+    <div class="setting-group">
+      <div class="setting-group-title">快速比價連結管理</div>
+      <div class="card" style="margin-bottom:0">
+        <div id="compareLinksList"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="openAddCompareLink()">+ 新增比價平台</button>
+      </div>
+    </div>
+
+    <!-- Customer List -->
+    <div class="setting-group">
+      <div class="setting-group-title">客戶資料管理</div>
+      <div class="card" style="margin-bottom:0">
+        <div id="customerListSetting"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="openAddCustomer()">+ 新增客戶</button>
+      </div>
+    </div>
+
+    <!-- Save + Logout -->
+    <div style="display:flex;gap:10px;margin-top:4px;margin-bottom:24px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveAllSettings()">儲存設定</button>
+      <button class="btn btn-outline" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+</div><!-- end page-area -->
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchPage('home',this)" data-page="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    管理
+  </button>
+  <button class="nav-item" onclick="switchPage('products',this)" data-page="products">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    商品
+  </button>
+  <button class="nav-item" onclick="switchPage('orders',this)" data-page="orders">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    訂單
+  </button>
+  <button class="nav-item" onclick="switchPage('purchase',this)" data-page="purchase">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+    採購
+  </button>
+  <button class="nav-item" onclick="switchPage('settings',this)" data-page="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    設定
+  </button>
+</nav>
+</div>
+</div><!-- end mainApp -->
+
+<!-- 匯出 Canvas 的虛擬容器 -->
+<div id="exportTemplateContainer" style="position: absolute; left: -9999px; top: -9999px; pointer-events: none;"></div>
+
+<!-- ════════════════════════════════════════════
+     MODALS & SHEET FORMS
+════════════════════════════════════════════ -->
+
+<!-- Add/Edit Product Modal -->
+<div class="modal-overlay" id="modalAddProduct">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      新增商品
+      <button class="modal-close" onclick="closeModal('modalAddProduct')">×</button>
+    </div>
+    <!-- Tabs: Basic / Specs / Pricing / Compare / AI -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchProductTab('basic',this)">基本</button>
+      <button class="tab-btn" onclick="switchProductTab('spec',this)">規格</button>
+      <button class="tab-btn" onclick="switchProductTab('price',this)">定價</button>
+      <button class="tab-btn" onclick="switchProductTab('compare',this)">比價</button>
+      <button class="tab-btn" onclick="switchProductTab('ai',this)">AI文案</button>
+    </div>
+
+    <!-- Basic -->
+    <div id="ptab-basic" class="ptab active">
+      <div class="form-group"><label>商品名稱 *</label><input type="text" class="form-control" id="p-name" placeholder="商品名稱"></div>
+      <div class="form-group"><label>商品描述 / 核心賣點</label><textarea class="form-control" id="p-desc" rows="3" placeholder="描述商品特色…" style="resize:vertical"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>商品分類</label>
+          <select class="form-control" id="p-category"><option value="">選擇分類</option></select>
+        </div>
+        <div class="form-group"><label>截止日期</label><input type="date" class="form-control" id="p-deadline"></div>
+      </div>
+      <div class="form-group"><label>截止時間</label><input type="time" class="form-control" id="p-deadline-time" value="23:59"></div>
+      <div class="form-group">
+        <label>商品照片</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('p-photo-cam').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            拍照
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('p-photo-lib').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            相簿
+          </button>
+          <input type="file" id="p-photo-cam" accept="image/*" capture="camera" style="display:none" onchange="previewProductPhoto(this)">
+          <input type="file" id="p-photo-lib" accept="image/*" style="display:none" onchange="previewProductPhoto(this)">
+        </div>
+        <div id="p-photo-preview" style="margin-top:12px; display:none; position:relative; width:80px; height:80px;">
+          <img id="p-photo-img" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--border)">
+          <button onclick="deleteUploadedPhoto()" style="position:absolute; top:-6px; right:-6px; background:var(--red); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.2);" title="刪除照片">×</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Specs -->
+    <div id="ptab-spec" class="ptab" style="display:none">
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">規格類別設定</div>
+        <div id="specCategoryWrap"></div>
+        <button class="btn btn-outline btn-sm" onclick="addSpecCategory()" style="margin-top:8px">+ 新增規格類別</button>
+      </div>
+      <div style="margin-top:20px; border-top:1px dashed var(--border); padding-top:14px;">
+        <button class="btn btn-primary" style="width:100%" onclick="confirmSpecsAndGoToPricing()">確認規格並確認定價 ➔</button>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div id="ptab-price" class="ptab" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>原價 (原幣)</label>
+          <input type="number" class="form-control" id="p-cost" placeholder="0" oninput="calcPrice()">
+        </div>
+        <div class="form-group">
+          <label>幣別</label>
+          <select class="form-control" id="p-currency" onchange="calcPrice()">
+            <option value="TWD">TWD 台幣</option>
+            <option value="JPY">JPY 日圓</option>
+            <option value="KRW">KRW 韓元</option>
+            <option value="USD">USD 美元</option>
+            <option value="EUR">EUR 歐元</option>
+            <option value="GBP">GBP 英鎊</option>
+            <option value="CNY">CNY 人民幣</option>
+            <option value="HKD">HKD 港幣</option>
+            <option value="SGD">SGD 新幣</option>
+            <option value="AUD">AUD 澳幣</option>
+            <option value="THB">THB 泰銖</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>匯率（1 外幣 = ? 台幣）</label>
+        <input type="number" class="form-control" id="p-rate" step="0.0001" placeholder="自動帶入設定匯率" oninput="calcPrice()">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>毛利率 %</label>
+          <input type="number" class="form-control" id="p-margin" placeholder="20" min="0" max="200" oninput="calcPrice()">
+        </div>
+        <div class="form-group">
+          <label>手續費/運費加成 NT$</label>
+          <input type="number" class="form-control" id="p-extra" placeholder="0" oninput="calcPrice()">
+        </div>
+      </div>
+      <div class="calc-result" id="calcResult">
+        <div class="calc-result-row">
+          <span class="calc-result-label">原價（台幣換算）</span>
+          <span class="calc-result-value" id="cr-base">NT$ 0</span>
+        </div>
+        <div class="calc-result-row">
+          <span class="calc-result-label">建議販售金額</span>
+          <span class="calc-result-value highlight" id="cr-sell">NT$ 0</span>
+        </div>
+        <div class="calc-result-row">
+          <span class="calc-result-label">預估毛利</span>
+          <span class="calc-result-value" id="cr-profit">NT$ 0</span>
+        </div>
+      </div>
+      
+      <!-- General Single Price -->
+      <div class="form-group" id="singlePriceWrap" style="margin-top:12px">
+        <label>販售金額 NT$ (無規格時適用)</label>
+        <input type="number" class="form-control" id="p-price" placeholder="販售金額">
+      </div>
+
+      <!-- Spec Pricing Combinations -->
+      <div id="specPricingRowsWrap" style="margin-top:16px; display:none;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px;">已偵測到商品規格，請確認/設定各規格售價：</div>
+        <div id="specPricingGrid" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Compare -->
+    <div id="ptab-compare" class="ptab" style="display:none">
+      <div class="form-group">
+        <label>商品關鍵字</label>
+        <input type="text" class="form-control" id="p-keyword" placeholder="輸入搜尋關鍵字">
+      </div>
+      <div class="compare-grid" id="compareGrid"></div>
+      <div style="margin-top:14px">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">其他平台（前往設定管理）</div>
+        <div id="customCompareGrid" class="compare-grid"></div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div id="ptab-ai" class="ptab" style="display:none">
+      <div class="form-group">
+        <label>生成平台</label>
+        <select class="form-control" id="ai-platform">
+          <option>Facebook</option>
+          <option>Instagram</option>
+          <option>Line</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>生成風格</label>
+        <input type="text" class="form-control" id="ai-style" placeholder="例：幽默風趣、溫慢感性、專業權威">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:14px" onclick="generateAICopy()">生成行銷文案</button>
+      <div id="aiCopyResult" style="display:none">
+        <div style="background:var(--warm-100);border:1px solid var(--warm-200);border-radius:10px;padding:14px;font-size:13px;line-height:1.8;white-space:pre-wrap;color:var(--text-primary)" id="aiCopyText"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="copyAIText()">一鍵複製文案</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveProduct()">儲存商品</button>
+  </div>
+</div>
+
+<!-- Add Order Modal -->
+<div class="modal-overlay" id="modalAddOrder">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      新增訂單
+      <button class="modal-close" onclick="closeModal('modalAddOrder')">×</button>
+    </div>
+    <div class="form-group">
+      <label>選擇客戶 *</label>
+      <select class="form-control" id="o-customer"><option value="">選擇客戶</option></select>
+    </div>
+
+    <!-- 🛒 增加多品項商品明細區塊 -->
+    <div style="border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: var(--warm-100);">
+      <div style="font-size: 12px; font-weight: 700; color: var(--warm-600); margin-bottom: 10px; display: flex; align-items: center; gap: 4px;">
+        🛒 新增商品品項至訂購清單
+      </div>
+      <div class="form-group">
+        <label>選擇商品</label>
+        <select class="form-control" id="o-product" onchange="onOrderProductChange()"><option value="">選擇商品</option></select>
+      </div>
+      <div id="o-spec-select" style="display:none">
+        <div class="form-group">
+          <label>規格選擇</label>
+          <select class="form-control" id="o-spec"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>數量</label>
+          <input type="number" class="form-control" id="o-qty" value="1" min="1">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>單價 NT$</label>
+          <input type="number" class="form-control" id="o-unit-price" placeholder="0">
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" style="width:100%; margin-top:12px; font-weight:700;" onclick="addTempOrderItem()">+ 新增此商品至清單</button>
+    </div>
+
+    <!-- 已加入明細列表 -->
+    <div class="form-group" id="o-items-container" style="display:none; margin-bottom:14px;">
+      <label style="font-weight: 700; color: var(--text-secondary);">已加入商品明細：</label>
+      <div id="o-items-list" style="display:flex; flex-direction:column; gap:6px; margin-top:6px;"></div>
+    </div>
+
+    <!-- Discount -->
+    <div class="form-group">
+      <label>活動折讓 (合計套用)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="form-control" id="o-discount-type" style="width:120px;flex:0 0 auto" onchange="calcOrderTotal()">
+          <option value="amount">折讓金額 NT$</option>
+          <option value="pct">折讓數 (9=9折)</option>
+        </select>
+        <input type="number" class="form-control" id="o-discount-val" placeholder="0" oninput="calcOrderTotal()">
+      </div>
+      <input type="text" class="form-control" id="o-discount-note" placeholder="折讓備註" style="margin-top:6px">
+    </div>
+    <!-- Logistics -->
+    <div class="form-group">
+      <label>物流方式</label>
+      <select class="form-control" id="o-logistics" onchange="onLogisticsChange()">
+        <option value="面交">面交</option>
+        <option value="7-11貨到付款">7-11 貨到付款</option>
+        <option value="7-11取貨">7-11 取貨（先付款）</option>
+        <option value="全家貨到付款">全家 貨到付款</option>
+        <option value="全家取貨">全家 取貨（先付款）</option>
+        <option value="OKmart">OKmart</option>
+        <option value="宅配">宅配</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>運費 NT$</label>
+        <input type="number" class="form-control" id="o-shipping-fee" value="0" oninput="calcOrderTotal()">
+      </div>
+      <div class="form-group">
+        <label>取貨地址</label>
+        <input type="text" class="form-control" id="o-shipping-addr" placeholder="門市或地址">
+      </div>
+    </div>
+    <!-- Payment -->
+    <div class="form-group">
+      <label>付款方式</label>
+      <select class="form-control" id="o-payment" onchange="toggleAddOrderPaymentFields()">
+        <option>現金付款</option>
+        <option>銀行轉帳</option>
+        <option>貨到付款</option>
+      </select>
+    </div>
+    
+    <!-- Bank Transfer Fields for Add Order -->
+    <div id="o-bank-transfer-fields" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--warm-100);">
+      <div class="form-group" style="margin-bottom: 8px;">
+        <label style="font-size: 11px; font-weight: 700;">轉帳銀行</label>
+        <input type="text" class="form-control" id="o-pay-bank-name" placeholder="例如：國泰世華">
+      </div>
+      <div class="form-row" style="margin-bottom: 0;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 11px; font-weight: 700;">轉帳帳號 / 後五碼</label>
+          <input type="text" class="form-control" id="o-pay-bank-account" placeholder="請輸入匯款後五碼">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 11px; font-weight: 700;">轉帳戶名</label>
+          <input type="text" class="form-control" id="o-pay-bank-holder" placeholder="付款帳戶戶名">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>已付款時間</label>
+      <input type="datetime-local" class="form-control" id="o-paid-time">
+    </div>
+    <!-- Total -->
+    <div class="calc-result">
+      <div class="calc-result-row">
+        <span class="calc-result-label">商品合計小計</span>
+        <span class="calc-result-value" id="o-sub-total">NT$ 0</span>
+      </div>
+      <div class="calc-result-row">
+        <span class="calc-result-label">折讓金額</span>
+        <span class="calc-result-value" id="o-discount-display">- NT$ 0</span>
+      </div>
+      <div class="calc-result-row">
+        <span class="calc-result-label">運費金額</span>
+        <span class="calc-result-value" id="o-ship-display">NT$ 0</span>
+      </div>
+      <div class="calc-result-row" style="border-top:1px solid var(--warm-300);margin-top:6px;padding-top:6px">
+        <span class="calc-result-label" style="font-weight:700">全部合計金額</span>
+        <span class="calc-result-value highlight" id="o-total">NT$ 0</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveOrder()">建立合計訂單</button>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-full" id="modalOrderDetail">
+  <div class="modal-header">
+    <button class="modal-header-btn" onclick="closeModal('modalOrderDetail')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="modal-header-title" id="orderDetailTitle">訂單詳情</div>
+    <button class="modal-header-btn" onclick="saveOrderDetail()">
+      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    </button>
+  </div>
+  <div class="modal-body" id="orderDetailBody"></div>
+</div>
+
+<!-- Product Detail Modal -->
+<div class="modal-full" id="modalProductDetail">
+  <div class="modal-header">
+    <button class="modal-header-btn" onclick="closeModal('modalProductDetail')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="modal-header-title" id="productDetailTitle">商品詳情</div>
+    <div style="display:flex; gap:10px;">
+      <button class="modal-header-btn" id="productDetailEditBtn" title="編輯商品">
+        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="modal-body" id="productDetailBody"></div>
+</div>
+
+<!-- Add Period Modal -->
+<div class="modal-overlay" id="modalAddPeriod">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增專案檔期<button class="modal-close" onclick="closeModal('modalAddPeriod')">×</button></div>
+    <div class="form-group"><label>檔期名稱</label><input type="text" class="form-control" id="per-name" placeholder="例：2026-06 韓國潮流服飾連線"></div>
+    <div class="form-row">
+      <div class="form-group"><label>開始日期</label><input type="date" class="form-control" id="per-start"></div>
+      <div class="form-group"><label>結束日期</label><input type="date" class="form-control" id="per-end"></div>
+    </div>
+    <div class="form-group"><label>描述</label><textarea class="form-control" id="per-desc" rows="2" placeholder="檔期說明"></textarea></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="savePeriod()">建立檔期</button>
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal-overlay" id="modalAddCategory">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增商品分類<button class="modal-close" onclick="closeModal('modalAddCategory')">×</button></div>
+    <div class="form-group"><label>分類名稱</label><input type="text" class="form-control" id="cat-name" placeholder="例：服裝、保養品"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveCategory()">新增</button>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="modalAddCustomer">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增客戶<button class="modal-close" onclick="closeModal('modalAddCustomer')">×</button></div>
+    <div class="form-row">
+      <div class="form-group"><label>姓名 *</label><input type="text" class="form-control" id="cust-name" placeholder="客戶姓名"></div>
+      <div class="form-group"><label>LINE ID</label><input type="text" class="form-control" id="cust-line" placeholder="LINE ID"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>電話</label><input type="tel" class="form-control" id="cust-phone" placeholder="0912-xxx-xxx"></div>
+      <div class="form-group"><label>電子郵件</label><input type="email" class="form-control" id="cust-email" placeholder="email"></div>
+    </div>
+    <div class="form-group"><label>地址</label><input type="text" class="form-control" id="cust-addr" placeholder="地址"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveCustomer()">新增客戶</button>
+  </div>
+</div>
+
+<!-- Add Compare Link Modal -->
+<div class="modal-overlay" id="modalAddCompareLink">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增比價平台<button class="modal-close" onclick="closeModal('modalAddCompareLink')">×</button></div>
+    <div class="form-group"><label>平台名稱</label><input type="text" class="form-control" id="cl-name" placeholder="例：蝦皮、Coupang"></div>
+    <div class="form-group"><label>搜尋網址前綴</label><input type="text" class="form-control" id="cl-url" placeholder="例：https://shopee.tw/search?keyword="></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveCompareLink()">新增</button>
+  </div>
+</div>
+
+<!-- FAB Menu -->
+<div class="modal-overlay" id="fabMenu">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">快速新增<button class="modal-close" onclick="closeModal('fabMenu')">×</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:12px;padding:14px" onclick="closeModal('fabMenu');openAddProduct()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm-500)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        新增商品
+      </button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:12px;padding:14px" onclick="closeModal('fabMenu');openAddOrder()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm-500)" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        新增訂單
+      </button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:12px;padding:14px" onclick="closeModal('fabMenu');openAddPeriod()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm-500)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        新增檔期
+      </button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:12px;padding:14px" onclick="closeModal('fabMenu');openAddCustomer()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm-500)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
+        新增客戶
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ JAVASCRIPT LOGIC ════ -->
+<script>
+// ── TicNote Date ──
+(function(){var d=document.getElementById('r-date');if(d)d.textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'})})();
+
+// ══════════════════════════════════════════
+// DATA STORE (localStorage)
+// ══════════════════════════════════════════
+const KEYS={products:'fgm_products',orders:'fgm_orders',customers:'fgm_customers',periods:'fgm_periods',categories:'fgm_categories',settings:'fgm_settings',compareLinks:'fgm_compare_links',currentPeriod:'fgm_current_period'};
+
+function load(k){try{return JSON.parse(localStorage.getItem(KEYS[k]))||[]}catch{return[]}}
+function loadObj(k){try{return JSON.parse(localStorage.getItem(KEYS[k]))||{}}catch{return{}}}
+function save(k,v){localStorage.setItem(KEYS[k],JSON.stringify(v))}
+
+let DB={
+  products:load('products'),
+  orders:load('orders'),
+  customers:load('customers'),
+  periods:load('periods'),
+  categories:load('categories'),
+  compareLinks:load('compareLinks'),
+  settings:loadObj('settings'),
+  currentPeriod:localStorage.getItem(KEYS.currentPeriod)||null
+};
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+// 暫存多品項陣列 (於新增訂單時使用)
+let tempOrderItems = [];
+
+// Default compare links
+if(!DB.compareLinks.length){
+  DB.compareLinks=[
+    {id:uid(),name:'Google購物',url:'https://www.google.com/search?tbm=shop&q='},
+    {id:uid(),name:'蝦皮',url:'https://shopee.tw/search?keyword='},
+    {id:uid(),name:'MOMO',url:'https://www.momoshop.com.tw/search/searchShop.jsp?keyword='},
+    {id:uid(),name:'飛比',url:'https://feebee.com.tw/search/?q='},
+    {id:uid(),name:'Yahoo購物',url:'https://tw.buy.yahoo.com/search/product?p='},
+    {id:uid(),name:'Amazon',url:'https://www.amazon.com/s?k='},
+    {id:uid(),name:'樂天',url:'https://search.rakuten.com.tw/search/mall/'},
+    {id:uid(),name:'Coupang',url:'https://www.coupang.com/np/search?q='},
+  ];
+  save('compareLinks',DB.compareLinks);
+}
+
+// Default categories
+if(!DB.categories.length){
+  DB.categories=[{id:uid(),name:'服裝'},{id:uid(),name:'保養品'},{id:uid(),name:'美食'},{id:uid(),name:'3C'},{id:uid(),name:'配件'}];
+  save('categories',DB.categories);
+}
+
+// ── Exchange rates (approximate) ──
+const RATES={TWD:1,JPY:0.22,KRW:0.024,USD:32.5,EUR:35.5,GBP:41.5,CNY:4.5,HKD:4.2,SGD:24.5,AUD:21.5,THB:0.96};
+
+// ══════════════════════════════════════════
+// CUSTOM DIALOG & TOAST SYSTEM (代替 alert/confirm 以免 iframe 阻擋)
+// ══════════════════════════════════════════
+function showToast(msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast-msg';
+  toast.innerText = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+let confirmCallback = null;
+function showConfirm(title, text, callback) {
+  document.getElementById('confirmTitle').innerText = title;
+  document.getElementById('confirmText').innerText = text;
+  document.getElementById('confirmModal').classList.add('open');
+  confirmCallback = callback;
+}
+function handleConfirm(yes) {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmCallback) {
+    confirmCallback(yes);
+    confirmCallback = null;
+  }
+}
+
+// ══════════════════════════════════════════
+// ROUTER / DEEP LINKING (對帳連結處理)
+// ══════════════════════════════════════════
+function checkClientRoute() {
+  const hash = window.location.hash;
+  if (hash.startsWith('#order/')) {
+    const token = hash.replace('#order/', '');
+    try {
+      const orderId = atob(token);
+      renderCustomerPortal(orderId);
+      return true;
+    } catch (e) {
+      showToast('對帳連結解析失敗');
+    }
+  }
+  return false;
+}
+
+function renderCustomerPortal(orderId) {
+  const o = DB.orders.find(x => x.id === orderId);
+  const portal = document.getElementById('customerPortal');
+  const login = document.getElementById('loginScreen');
+  const app = document.getElementById('mainApp');
+  
+  if (!o) {
+    portal.innerHTML = `<div class="empty-state"><h3>查無此對帳訂單</h3><p>請重新向代購主確認連結。</p></div>`;
+    portal.style.display = 'block';
+    login.style.display = 'none';
+    app.style.display = 'none';
+    return;
+  }
+
+  login.style.display = 'none';
+  app.style.display = 'none';
+  portal.style.display = 'block';
+
+  const statusLabel = {pending:'已收到訂單（待處理）', shipping:'已出貨（配送中）', payment:'待核對付款狀態', done:'已結單（交易完成）'};
+  const store = DB.settings;
+
+  // 動態渲染客戶清單列表
+  let itemsRowsHtml = '';
+  if (o.items && o.items.length) {
+    itemsRowsHtml = o.items.map(item => `
+      <tr>
+        <td style="padding: 6px 0; font-weight: 700;">${item.productName} ${item.specLabel ? `(${item.specLabel})` : ''}</td>
+        <td style="padding: 6px 0; text-align: right;">${item.qty} 件</td>
+      </tr>
+    `).join('');
+  } else {
+    itemsRowsHtml = `
+      <tr>
+        <td style="padding: 6px 0; font-weight: 700;">${o.productName || '未知商品'} ${o.specLabel ? `(${o.specLabel})` : ''}</td>
+        <td style="padding: 6px 0; text-align: right;">${o.qty || 1} 件</td>
+      </tr>
+    `;
+  }
+
+  document.getElementById('portalBody').innerHTML = `
+    <div class="card">
+      <div class="card-title">🎉 您好！${o.customerName}，這是您的專屬對帳單</div>
+      <div style="font-size: 20px; font-weight: 800; color: var(--warm-600); margin: 10px 0;">
+        NT$ ${(o.total || 0).toLocaleString()}
+      </div>
+      <div style="display: flex; gap:8px; margin-bottom: 12px;">
+        <span class="badge badge-pending">${statusLabel[o.status] || o.status}</span>
+      </div>
+      <table class="pl-table" style="margin-bottom: 12px;">
+        ${itemsRowsHtml}
+        <tr style="border-top: 1px solid var(--border);">
+          <td style="padding: 8px 0; color: var(--text-secondary);">折讓金額</td>
+          <td style="padding: 8px 0; text-align: right; color: var(--red); font-weight: 700;">- NT$ ${(o.discountAmt || 0).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: var(--text-secondary);">運費金額 (${o.logistics || '未定'})</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 700;">NT$ ${(o.shippingFee || 0).toLocaleString()}</td>
+        </tr>
+      </table>
+      <table class="pl-table" style="border-top: 1px solid var(--border);">
+        ${o.shippingAddr ? `<tr><td style="padding: 8px 0; color: var(--text-secondary);">收件地址/門市</td><td style="padding: 8px 0; text-align: right;">${o.shippingAddr}</td></tr>` : ''}
+        ${o.trackingCode ? `<tr><td style="padding: 8px 0; color: var(--text-secondary);">配送追蹤</td><td style="padding: 8px 0; text-align: right;">${o.trackingCo || ''} - ${o.trackingCode}</td></tr>` : ''}
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏦 代購匯款資料</div>
+      <table class="pl-table">
+        <tr><td>銀行名稱</td><td>${store.bankName || '未提供'}</td></tr>
+        <tr><td>銀行帳號</td><td>${store.bankAccount || '未提供'}</td></tr>
+        <tr><td>戶名</td><td>${store.bankHolder || '未提供'}</td></tr>
+        ${store.bankNote ? `<tr><td>備註說明</td><td>${store.bankNote}</td></tr>` : ''}
+      </table>
+      <div style="margin-top: 14px; background: var(--warm-100); padding: 10px; border-radius: 8px; font-size: 12px; color: var(--text-secondary);">
+        💡 匯款完成後，請透過 LINE 告知代購主您的後五碼，以便核對狀態。
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+let loggedIn=localStorage.getItem('fgm_auth')==='1';
+function doLogin(){
+  localStorage.setItem('fgm_auth','1');
+  loggedIn=true;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  document.getElementById('customerPortal').style.display='none';
+  initApp();
+}
+function doLogout(){
+  showConfirm('安全登出', '確定要登出代購後台管理系統嗎？', (yes) => {
+    if (yes) {
+      localStorage.removeItem('fgm_auth');
+      location.reload();
+    }
+  });
+}
+
+// ── 啟動初始化與路由偵測 ──
+window.onload = function() {
+  if (!checkClientRoute()) {
+    if(loggedIn){
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('mainApp').style.display='block';
+      initApp();
+    }
+  }
+}
+
+// 監聽網址變化（如重新貼上對帳網址）
+window.onhashchange = function() {
+  if (!checkClientRoute() && loggedIn) {
+    document.getElementById('customerPortal').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+  }
+}
+
+// ══════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════
+let currentPage='home';
+function switchPage(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  currentPage=page;
+  refreshPage(page);
+}
+function refreshPage(page){
+  if(page==='home')renderHome();
+  if(page==='products')renderProducts();
+  if(page==='orders')renderOrders(currentOrderTab);
+  if(page==='purchase')renderPurchase();
+  if(page==='settings')renderSettings();
+}
+function goToOrders(tab){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector('[data-page="orders"]').classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-orders').classList.add('active');
+  currentPage='orders';
+  switchOrderTab(tab,document.querySelectorAll('#orderTabBar .tab-btn')[['pending','shipping','payment','done'].indexOf(tab)]);
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',function(e){if(e.target===this)closeModal(this.id)});
+});
+function openFAB(){openModal('fabMenu')}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function initApp(){
+  renderHome();
+  renderCategoryFilterChips();
+  renderProducts();
+  renderOrders('pending');
+  renderPurchase();
+  renderSettings();
+}
+
+// ══════════════════════════════════════════
+// HOME / DASHBOARD
+// ══════════════════════════════════════════
+function getPeriodOrders(){
+  if(!DB.currentPeriod)return[];
+  return DB.orders.filter(o=>o.periodId===DB.currentPeriod);
+}
+
+function renderHome(){
+  const orders=getPeriodOrders();
+  const doneOrders=orders.filter(o=>o.status==='done');
+
+  // Metrics
+  const revenue=doneOrders.reduce((s,o)=>s+(o.total||0),0);
+  
+  // 計算總成本 (相容多商品明細)
+  const cost=doneOrders.reduce((s,o)=>{
+    if (o.items && o.items.length) {
+      return s + o.items.reduce((sum, item) => sum + (item.costTWD || 0) * (item.qty || 1), 0);
+    }
+    return s + (o.costTWD || 0) * (o.qty || 1);
+  }, 0);
+
+  const profit=revenue-cost;
+  document.getElementById('metricRevenue').textContent=revenue.toLocaleString();
+  document.getElementById('metricOrders').textContent=orders.length;
+  document.getElementById('metricProfit').textContent=profit.toLocaleString();
+
+  // Counters
+  document.getElementById('cnt-pending').textContent=orders.filter(o=>o.status==='pending').length;
+  document.getElementById('cnt-shipping').textContent=orders.filter(o=>o.status==='shipping').length;
+  document.getElementById('cnt-payment').textContent=orders.filter(o=>o.status==='payment').length;
+  document.getElementById('cnt-done').textContent=doneOrders.length;
+
+  // P&L
+  const expense=doneOrders.reduce((s,o)=>s+(parseFloat(o.shippingFee)||0),0);
+  const discount=doneOrders.reduce((s,o)=>s+(o.discountAmt||0),0);
+  document.getElementById('pl-revenue').textContent='NT$ '+revenue.toLocaleString();
+  document.getElementById('pl-cost').textContent='NT$ '+cost.toLocaleString();
+  document.getElementById('pl-gross').textContent='NT$ '+(revenue-cost).toLocaleString();
+  document.getElementById('pl-expense').textContent='NT$ '+expense.toLocaleString();
+  document.getElementById('pl-profit').textContent='NT$ '+(revenue-cost-expense).toLocaleString();
+  document.getElementById('pl-other').textContent='- NT$ '+discount.toLocaleString();
+  document.getElementById('pl-net').textContent='NT$ '+(revenue-cost-expense-discount).toLocaleString();
+
+  // Top Products (相容多商品明細統計)
+  const prodMap={};
+  doneOrders.forEach(o=>{
+    if (o.items && o.items.length) {
+      o.items.forEach(item => {
+        if(!prodMap[item.productId])prodMap[item.productId]={name:item.productName,qty:0,revenue:0};
+        prodMap[item.productId].qty+=(item.qty||1);
+        prodMap[item.productId].revenue+=(item.qty * item.unitPrice);
+      });
+    } else {
+      if(!prodMap[o.productId])prodMap[o.productId]={name:o.productName,qty:0,revenue:0};
+      prodMap[o.productId].qty+=(o.qty||1);
+      prodMap[o.productId].revenue+=(o.total||0);
+    }
+  });
+  const topProds=Object.values(prodMap).sort((a,b)=>b.qty-a.qty).slice(0,3);
+  const tpEl=document.getElementById('topProductsList');
+  if(topProds.length){
+    tpEl.innerHTML=topProds.map((p,i)=>`<div class="list-item"><div class="list-thumb" style="background:var(--warm-100);color:var(--warm-600);font-size:16px;font-weight:800;">${i+1}</div><div class="list-info"><div class="list-name">${p.name}</div><div class="list-sub">銷售 ${p.qty} 件</div></div><div class="list-right"><div class="list-price">NT$ ${p.revenue.toLocaleString()}</div></div></div>`).join('');
+  } else {
+    tpEl.innerHTML='<div class="empty-state" style="padding:20px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><p>尚無訂單資料</p></div>';
+  }
+
+  // Top Customers
+  const custMap={};
+  doneOrders.forEach(o=>{
+    if(!custMap[o.customerId])custMap[o.customerId]={name:o.customerName,total:0};
+    custMap[o.customerId].total+=(o.total||0);
+  });
+  const topCusts=Object.values(custMap).sort((a,b)=>b.total-a.total).slice(0,3);
+  const tcEl=document.getElementById('topCustomersList');
+  if(topCusts.length){
+    tcEl.innerHTML=topCusts.map((c,i)=>`<div class="list-item"><div class="list-thumb" style="background:var(--warm-100);color:var(--warm-600);font-size:16px;font-weight:800;">${i+1}</div><div class="list-info"><div class="list-name">${c.name}</div></div><div class="list-right"><div class="list-price">NT$ ${c.total.toLocaleString()}</div></div></div>`).join('');
+  } else {
+    tcEl.innerHTML='<div class="empty-state" style="padding:20px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>尚無客戶資料</p></div>';
+  }
+
+  // Period banner
+  if(DB.currentPeriod){
+    const per=DB.periods.find(p=>p.id===DB.currentPeriod);
+    if(per){
+      document.getElementById('noPeriodBanner').style.display='none';
+      document.getElementById('currentPeriodCard').style.display='block';
+      document.getElementById('currentPeriodName').textContent=per.name;
+    }
+  } else {
+    document.getElementById('noPeriodBanner').style.display='flex';
+    document.getElementById('currentPeriodCard').style.display='none';
+  }
+
+  // Proc info
+  renderProcInfoHome();
+}
+
+function renderProcInfoHome(){
+  const orders=getPeriodOrders().filter(o=>o.status!=='done' && !o.outOfStock);
+  const qtyMap={};
+  orders.forEach(o=>{
+    if (o.items && o.items.length) {
+      o.items.forEach(item => {
+        const key=item.productName+(item.specLabel?(' '+item.specLabel):'');
+        if(!qtyMap[key])qtyMap[key]=0;
+        qtyMap[key]+=(item.qty||1);
+      });
+    } else {
+      const key=o.productName+(o.specLabel?(' '+o.specLabel):'');
+      if(!qtyMap[key])qtyMap[key]=0;
+      qtyMap[key]+=(o.qty||1);
+    }
+  });
+  const el=document.getElementById('procInfoHome');
+  const items=Object.entries(qtyMap);
+  if(items.length){
+    el.innerHTML=items.map(([name,qty])=>`<div class="proc-row"><div class="proc-qty-box">×${qty}</div><div class="list-info"><div class="list-name">${name}</div></div></div>`).join('');
+  } else {
+    el.innerHTML='<div class="empty-state" style="padding:20px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg><p>尚無訂單資料</p></div>';
+  }
+}
+
+// ══════════════════════════════════════════
+// PRODUCTS (商品)
+// ══════════════════════════════════════════
+let activeProductFilter='all';
+let editingProductId=null;
+
+function filterProducts(cat,el){
+  activeProductFilter=cat;
+  document.querySelectorAll('#categoryFilterChips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderProducts();
+}
+
+function renderCategoryFilterChips(){
+  const wrap=document.getElementById('categoryFilterChips');
+  wrap.innerHTML='<div class="chip active" onclick="filterProducts(\'all\',this)">全部</div>'+
+    DB.categories.map(c=>`<div class="chip" onclick="filterProducts('${c.id}',this)">${c.name}</div>`).join('');
+}
+
+function renderProducts(){
+  let products=DB.products;
+  if(DB.currentPeriod)products=products.filter(p=>p.periodId===DB.currentPeriod);
+  if(activeProductFilter!=='all')products=products.filter(p=>p.categoryId===activeProductFilter);
+  const el=document.getElementById('productsList');
+  if(!products.length){
+    el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p>點擊右上角 + 新增第一個商品</p></div>';
+    return;
+  }
+  el.innerHTML=products.map(p=>{
+    const cat=DB.categories.find(c=>c.id===p.categoryId);
+    const deadline=p.deadline?(new Date(p.deadline+' '+p.deadlineTime).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})):'';
+    return `<div class="card" style="padding:12px;cursor:pointer" onclick="openProductDetail('${p.id}')">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div class="list-thumb">${p.photo?`<img src="${p.photo}" alt="">`: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--warm-300)" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="list-name">${p.name}</span>
+            ${cat?`<span class="badge badge-stock">${cat.name}</span>`:''}
+          </div>
+          ${p.desc?`<div style="font-size:12px;color:var(--text-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.desc}</div>`:''}
+          ${deadline?`<div style="font-size:11px;color:var(--amber);margin-top:3px;font-weight:600">截止：${deadline}</div>`:''}
+        </div>
+        <div style="text-align:right;flex:0 0 auto">
+          <div class="list-price">NT$ ${(p.price||0).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px">${p.margin?p.margin+'% 毛利':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddProduct(){
+  if(!DB.currentPeriod){showToast('請先建立並選擇一個專案檔期才能新增商品。');return;}
+  editingProductId=null;
+  
+  // Set modal title
+  document.querySelector('#modalAddProduct .modal-title').childNodes[0].textContent = '新增商品 ';
+  
+  // Reset form inputs
+  ['p-name','p-desc','p-deadline-time','p-cost','p-margin','p-extra','p-price','p-keyword','ai-style'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.value=id==='p-deadline-time'?'23:59':'';
+  });
+  document.getElementById('p-deadline').value='';
+  document.getElementById('p-photo-preview').style.display='none';
+  document.getElementById('p-photo-img').removeAttribute('src');
+  document.getElementById('aiCopyResult').style.display='none';
+  document.getElementById('specCategoryWrap').innerHTML='';
+  document.getElementById('specPricingGrid').innerHTML='';
+  document.getElementById('specPricingRowsWrap').style.display = 'none';
+  document.getElementById('singlePriceWrap').style.display = 'block';
+  
+  specCategories = [];
+  window._specCombos = [];
+  
+  // Populate category
+  const sel=document.getElementById('p-category');
+  sel.innerHTML='<option value="">選擇分類</option>'+DB.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  // Populate currency rate
+  const defCur=DB.settings.defaultCurrency||'TWD';
+  document.getElementById('p-currency').value=defCur;
+  document.getElementById('p-rate').value=DB.settings.exchangeRate||(RATES[defCur]||1);
+  
+  // Load compare links
+  renderCompareGrid();
+  switchProductTab('basic',document.querySelectorAll('#modalAddProduct .tab-btn')[0]);
+  openModal('modalAddProduct');
+}
+
+function switchProductTab(tab,el){
+  ['basic','price','spec','compare','ai'].forEach(t=>document.getElementById('ptab-'+t).style.display='none');
+  document.getElementById('ptab-'+tab).style.display='block';
+  if(el){document.querySelectorAll('#modalAddProduct .tab-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+}
+
+function previewProductPhoto(input){
+  if(input.files&&input.files[0]){
+    const reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('p-photo-img').src=e.target.result;
+      document.getElementById('p-photo-preview').style.display='block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Photo deletion/modification
+function deleteUploadedPhoto() {
+  document.getElementById('p-photo-img').removeAttribute('src');
+  document.getElementById('p-photo-preview').style.display = 'none';
+  document.getElementById('p-photo-cam').value = '';
+  document.getElementById('p-photo-lib').value = '';
+  showToast('商品照片已清除');
+}
+
+// Price Calculator
+function calcPrice(){
+  const cost=parseFloat(document.getElementById('p-cost').value)||0;
+  const cur=document.getElementById('p-currency').value||'TWD';
+  let rate=parseFloat(document.getElementById('p-rate').value);
+  if(!rate)rate=RATES[cur]||1;
+  const margin=parseFloat(document.getElementById('p-margin').value)||0;
+  const extra=parseFloat(document.getElementById('p-extra').value)||0;
+  const baseTWD=cost*rate;
+  const sellPrice=baseTWD*(1+margin/100)+extra;
+  const profit=sellPrice-baseTWD-extra;
+  
+  const roundedSellPrice = Math.round(sellPrice) || 0;
+  
+  document.getElementById('cr-base').textContent='NT$ '+Math.round(baseTWD).toLocaleString();
+  document.getElementById('cr-sell').textContent='NT$ '+roundedSellPrice.toLocaleString();
+  document.getElementById('cr-profit').textContent='NT$ '+Math.round(profit).toLocaleString();
+  
+  // Only override default price if not manually customized or is blank
+  const priceInput = document.getElementById('p-price');
+  if (priceInput && (!priceInput.value || priceInput.dataset.auto === 'true')) {
+    priceInput.value = roundedSellPrice || '';
+    priceInput.dataset.auto = 'true';
+  }
+  
+  // Dynamic updates of combinational pricing rows if specifications exist
+  if (window._specCombos && window._specCombos.length) {
+    window._specCombos.forEach((_, idx) => {
+      const specInput = document.getElementById('spec-price-' + idx);
+      if (specInput) {
+        specInput.placeholder = roundedSellPrice;
+      }
+    });
+  }
+}
+
+// Spec Categories
+let specCategories=[];
+function addSpecCategory(){
+  const id=uid();
+  specCategories.push({id,name:'',options:[]});
+  renderSpecCategories();
+}
+function renderSpecCategories(){
+  const wrap=document.getElementById('specCategoryWrap');
+  wrap.innerHTML=specCategories.map((cat,ci)=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="text" class="form-control" style="flex:1" placeholder="類別名稱（例：顏色）" value="${cat.name}" oninput="specCategories[${ci}].name=this.value">
+        <button class="btn btn-danger btn-sm" onclick="specCategories.splice(${ci},1);renderSpecCategories()">刪除</button>
+      </div>
+      <div id="spec-opts-${cat.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        ${cat.options.map((opt,oi)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--warm-100);border:1px solid var(--warm-200);border-radius:6px;padding:3px 8px;font-size:12px">${opt}<button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;line-height:1" onclick="specCategories[${ci}].options.splice(${oi},1);renderSpecCategories()">×</button></span>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px">
+        <input type="text" class="form-control" id="spec-input-${cat.id}" placeholder="輸入選項後按新增" style="flex:1">
+        <button class="btn btn-outline btn-sm" onclick="addSpecOption(${ci},'spec-input-${cat.id}')">+ 新增</button>
+      </div>
+    </div>
+  `).join('');
+  renderSpecCombinations();
+}
+function addSpecOption(ci,inputId){
+  const val=document.getElementById(inputId).value.trim();
+  if(!val)return;
+  specCategories[ci].options.push(val);
+  renderSpecCategories();
+}
+
+// "規格確認後，才確認定價" 的轉換機制
+function confirmSpecsAndGoToPricing() {
+  renderSpecCombinations();
+  calcPrice();
+  
+  // Switch directly to Pricing (定價) Tab
+  const priceTabBtn = document.querySelectorAll('#modalAddProduct .tab-btn')[2];
+  switchProductTab('price', priceTabBtn);
+  showToast('規格確認成功！請前往確認最終定價。');
+}
+
+function renderSpecCombinations(){
+  const wrap=document.getElementById('specPricingGrid');
+  const container = document.getElementById('specPricingRowsWrap');
+  const singlePriceWrap = document.getElementById('singlePriceWrap');
+  
+  if(!specCategories.length||specCategories.every(c=>!c.options.length)){
+    if(wrap) wrap.innerHTML='';
+    if(container) container.style.display = 'none';
+    if(singlePriceWrap) singlePriceWrap.style.display = 'block';
+    window._specCombos = [];
+    return;
+  }
+  
+  // Generate cartesian product
+  const combos=cartesian(specCategories.filter(c=>c.options.length).map(c=>c.options.map(o=>({cat:c.name,opt:o}))));
+  window._specCombos=combos;
+  
+  if(container) container.style.display = 'block';
+  if(singlePriceWrap) singlePriceWrap.style.display = 'none';
+  
+  const calculatedSellPrice = parseFloat(document.getElementById('p-price').value) || 0;
+  
+  if(wrap) {
+    wrap.innerHTML = combos.map((combo,idx)=>{
+      const label=Array.isArray(combo)?combo.map(c=>c.opt).join(' / '):combo.opt;
+      
+      // Load previous customized spec price if editing
+      let savedPrice = '';
+      if(editingProductId) {
+        const matchingProduct = DB.products.find(x => x.id === editingProductId);
+        if(matchingProduct && matchingProduct.specs && matchingProduct.specs[idx]) {
+          savedPrice = matchingProduct.specs[idx].price || '';
+        }
+      }
+      
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px;background:var(--warm-100);border-radius:8px;">
+          <span style="flex:1;font-size:13px;font-weight:600;color:var(--text-secondary)">${label}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--text-muted)">NT$</span>
+            <input type="number" class="form-control" style="width:100px;padding:6px 10px;" placeholder="${calculatedSellPrice || '售價'}" id="spec-price-${idx}" value="${savedPrice}">
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+function cartesian(arrs){
+  if(!arrs.length)return[];
+  return arrs.reduce((acc,arr)=>acc.flatMap(a=>arr.map(b=>([].concat(a,[b])))),[[]]
+  ).map(combo=>combo.filter(x=>x!==undefined&&x!==null));
+}
+
+function getSpecsFromForm(){
+  if(!window._specCombos || !window._specCombos.length)return[];
+  return window._specCombos.map((combo,idx)=>{
+    const label=Array.isArray(combo)?combo.map(c=>c.opt).join(' / '):combo.opt;
+    const specInput = document.getElementById('spec-price-'+idx);
+    const price=specInput ? (parseFloat(specInput.value) || parseFloat(document.getElementById('p-price').value) || 0) : (parseFloat(document.getElementById('p-price').value) || 0);
+    return{label,price};
+  });
+}
+
+// Compare Grid
+function renderCompareGrid(){
+  const grid=document.getElementById('compareGrid');
+  const builtIn=[
+    {name:'Google購物',url:'https://www.google.com/search?tbm=shop&q=',icon:'🛒'},
+    {name:'蝦皮',url:'https://shopee.tw/search?keyword=',icon:'🛍'},
+    {name:'MOMO',url:'https://www.momoshop.com.tw/search/searchShop.jsp?keyword=',icon:'🏪'},
+    {name:'飛比',url:'https://feebee.com.tw/search/?q=',icon:'💹'},
+    {name:'Amazon',url:'https://www.amazon.com/s?k=',icon:'📦'},
+    {name:'Coupang',url:'https://www.coupang.com/np/search?q=',icon:'🇰🇷'},
+  ];
+  grid.innerHTML=builtIn.map(p=>`<a class="compare-btn" href="javascript:openCompare('${p.url}')"><span style="font-size:18px">${p.icon}</span>${p.name}</a>`).join('');
+  // Custom
+  const cg=document.getElementById('customCompareGrid');
+  if(DB.compareLinks.length){
+    cg.innerHTML=DB.compareLinks.map(l=>`<a class="compare-btn" href="javascript:openCompare('${l.url}')"><svg viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>${l.name}</a>`).join('');
+  }
+}
+function openCompare(urlPrefix){
+  const kw=encodeURIComponent(document.getElementById('p-keyword').value||'');
+  window.open(urlPrefix+kw,'_blank');
+}
+
+// AI Copy
+function generateAICopy(){
+  const name=document.getElementById('p-name').value||'商品';
+  const desc=document.getElementById('p-desc').value||'';
+  const price=document.getElementById('p-price').value||'0';
+  const deadline=document.getElementById('p-deadline').value||'';
+  const deadlineTime=document.getElementById('p-deadline-time').value||'';
+  const platform=document.getElementById('ai-platform').value;
+  const style=document.getElementById('ai-style').value||'溫慢感性';
+  const deadlineStr=deadline?(deadline+(deadlineTime?' '+deadlineTime:'')):'';
+
+  const copy=`【${name}】✨
+
+${desc}
+
+售價：NT$ ${price}${deadlineStr?'\n截止時間：'+deadlineStr:''}
+
+${style==='幽默風趣'?'老闆開賣啦！手腳慢就等下次吧～':''}${style==='溫暖感性'?'精心為你挑選，每一件都是用心：':''}${style==='專業權威'?'嚴選品質保證，CP值超高：':''}
+
+數量有限，需要的朋友請在留言處登記，格式：
+姓名 + 規格 + 數量
+
+Fairy godmother代購
+#代購 #${name.replace(/\s/g,'')}`;
+
+  document.getElementById('aiCopyText').textContent=copy;
+  document.getElementById('aiCopyResult').style.display='block';
+}
+function copyAIText(){
+  const text=document.getElementById('aiCopyText').textContent;
+  navigator.clipboard.writeText(text).then(()=>showToast('文案已複製！可直接貼至 LINE 記事本')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('文案已複製！');
+  });
+}
+
+function saveProduct(){
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){showToast('請輸入商品名稱');return;}
+  
+  // Preserve existing base64 image or keep current source
+  const imgEl = document.getElementById('p-photo-img');
+  const photo= (imgEl && imgEl.src && imgEl.src.startsWith('data:')) ? imgEl.src : ((imgEl && imgEl.src) ? imgEl.src : '');
+  
+  const specs=getSpecsFromForm();
+  const cur=document.getElementById('p-currency').value;
+  const rate=parseFloat(document.getElementById('p-rate').value)||RATES[cur]||1;
+  const cost=parseFloat(document.getElementById('p-cost').value)||0;
+  const margin=parseFloat(document.getElementById('p-margin').value)||0;
+  const price=parseFloat(document.getElementById('p-price').value)||0;
+  const categoryId=document.getElementById('p-category').value;
+  const deadline=document.getElementById('p-deadline').value;
+  const deadlineTime=document.getElementById('p-deadline-time').value;
+  const desc=document.getElementById('p-desc').value;
+  const extra=parseFloat(document.getElementById('p-extra').value)||0;
+
+  const productData = {
+    name, desc, categoryId, deadline, deadlineTime, photo, cost, currency: cur, rate, margin, extra, price, specs,
+    specCategories: JSON.parse(JSON.stringify(specCategories)) // Deep clone categories to preserve editing state
+  };
+
+  if(editingProductId) {
+    // Edit existing product
+    const idx = DB.products.findIndex(p => p.id === editingProductId);
+    if(idx !== -1) {
+      DB.products[idx] = {
+        ...DB.products[idx],
+        ...productData,
+        updatedAt: new Date().toISOString()
+      };
+      showToast('商品修改成功！');
+    }
+  } else {
+    // Create new product
+    const prod={
+      id:uid(),
+      periodId:DB.currentPeriod,
+      ...productData,
+      createdAt:new Date().toISOString()
+    };
+    DB.products.push(prod);
+    showToast('商品新增成功！');
+  }
+
+  save('products',DB.products);
+  closeModal('modalAddProduct');
+  renderProducts();
+  renderCategoryFilterChips();
+}
+
+function openProductDetail(id){
+  const p=DB.products.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('productDetailTitle').textContent=p.name;
+  
+  // Set edit action for details modal
+  document.getElementById('productDetailEditBtn').onclick = function() {
+    closeModal('modalProductDetail');
+    openEditProduct(p.id);
+  };
+
+  const cat=DB.categories.find(c=>c.id===p.categoryId);
+  document.getElementById('productDetailBody').innerHTML=`
+    <div id="prodDetailData" data-id="${p.id}"></div>
+    ${p.photo?`<img src="${p.photo}" style="width:100%;border-radius:12px;margin-bottom:14px;max-height:200px;object-fit:cover">`:''}
+    <div class="card">
+      <div class="form-group"><label>商品名稱</label><div style="font-size:15px; font-weight:600;">${p.name}</div></div>
+      <div class="form-group"><label>描述</label><div style="font-size:13px; color:var(--text-secondary); white-space:pre-wrap;">${p.desc||'無商品描述'}</div></div>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group"><label>分類</label><div style="font-size:13px;">${cat ? cat.name : '未分類'}</div></div>
+        <div class="form-group"><label>截止時間</label><div style="font-size:13px;">${p.deadline ? (p.deadline + ' ' + (p.deadlineTime || '')) : '無截止時間'}</div></div>
+      </div>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group"><label>原幣代購成本</label><div style="font-size:13px;">${p.cost || 0} ${p.currency}</div></div>
+        <div class="form-group"><label>預售金額 (TWD)</label><div style="font-size:13px; font-weight:700; color:var(--warm-600);">NT$ ${(p.price||0).toLocaleString()}</div></div>
+      </div>
+    </div>
+    ${p.specs&&p.specs.length?`<div class="card"><div class="card-title">規格價格清單</div>${p.specs.map(s=>`<div class="proc-row"><div class="list-info"><div class="list-name">${s.label}</div></div><div class="list-price">NT$ ${s.price.toLocaleString()}</div></div>`).join('')}</div>`:''}
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeModal('modalProductDetail'); openEditProduct('${p.id}')">編輯商品</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">刪除商品</button>
+    </div>
+  `;
+  openModal('modalProductDetail');
+}
+
+function openEditProduct(id) {
+  const p = DB.products.find(x => x.id === id);
+  if(!p) return;
+  editingProductId = p.id;
+  
+  // Set modal title to Edit mode
+  document.querySelector('#modalAddProduct .modal-title').childNodes[0].textContent = '編輯商品 ';
+  
+  // Populate Basic fields
+  document.getElementById('p-name').value = p.name || '';
+  document.getElementById('p-desc').value = p.desc || '';
+  document.getElementById('p-deadline').value = p.deadline || '';
+  document.getElementById('p-deadline-time').value = p.deadlineTime || '23:59';
+  
+  // Populate category
+  const sel=document.getElementById('p-category');
+  sel.innerHTML='<option value="">選擇分類</option>'+DB.categories.map(c=>`<option value="${c.id}" ${c.id===p.categoryId ? 'selected':''}>${c.name}</option>`).join('');
+  
+  // Image preview
+  if (p.photo) {
+    document.getElementById('p-photo-img').src = p.photo;
+    document.getElementById('p-photo-preview').style.display = 'block';
+  } else {
+    document.getElementById('p-photo-img').removeAttribute('src');
+    document.getElementById('p-photo-preview').style.display = 'none';
+  }
+  
+  // Populate pricing parameters
+  document.getElementById('p-cost').value = p.cost || '';
+  document.getElementById('p-currency').value = p.currency || 'TWD';
+  document.getElementById('p-rate').value = p.rate || RATES[p.currency] || 1;
+  document.getElementById('p-margin').value = p.margin || '';
+  document.getElementById('p-extra').value = p.extra || '';
+  document.getElementById('p-price').value = p.price || '';
+  
+  // Populate specs
+  specCategories = p.specCategories ? JSON.parse(JSON.stringify(p.specCategories)) : [];
+  renderSpecCategories();
+  
+  // Switch to first tab and open edit sheet
+  switchProductTab('basic', document.querySelectorAll('#modalAddProduct .tab-btn')[0]);
+  openModal('modalAddProduct');
+}
+
+function saveProductDetail(){
+  const id=document.getElementById('prodDetailData').dataset.id;
+  const p=DB.products.find(x=>x.id===id);
+  if(!p)return;
+  p.name=document.getElementById('pd-name').value;
+  p.desc=document.getElementById('pd-desc').value;
+  p.categoryId=document.getElementById('pd-category').value;
+  p.deadline=document.getElementById('pd-deadline').value;
+  p.deadlineTime=document.getElementById('pd-deadline-time').value;
+  p.cost=parseFloat(document.getElementById('pd-cost').value)||0;
+  p.currency=document.getElementById('pd-currency').value;
+  p.margin=parseFloat(document.getElementById('pd-margin').value)||0;
+  p.price=parseFloat(document.getElementById('pd-price').value)||0;
+  save('products',DB.products);
+  closeModal('modalProductDetail');
+  renderProducts();
+  showToast('商品詳情已儲存');
+}
+
+function deleteProduct(id){
+  showConfirm('刪除商品', '確定刪除此商品嗎？相關商品資料將會被永久移除。', (yes) => {
+    if (yes) {
+      DB.products=DB.products.filter(p=>p.id!==id);
+      save('products',DB.products);
+      closeModal('modalProductDetail');
+      renderProducts();
+      showToast('商品已刪除');
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+// ORDERS
+// ══════════════════════════════════════════
+let currentOrderTab='pending';
+function switchOrderTab(tab,el){
+  currentOrderTab=tab;
+  document.querySelectorAll('#orderTabBar .tab-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderOrders(tab);
+}
+
+function renderOrders(tab){
+  let orders=DB.orders.filter(o=>o.status===tab);
+  if(DB.currentPeriod)orders=orders.filter(o=>o.periodId===DB.currentPeriod);
+  const el=document.getElementById('ordersList');
+  if(!orders.length){
+    el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>此分類暫無訂單</p></div>';
+    return;
+  }
+  
+  el.innerHTML=orders.map(o=>{
+    const statusMap={pending:'badge-pending',shipping:'badge-shipping',payment:'badge-payment',done:'badge-done'};
+    const statusLabel={pending:'待處理',shipping:'待出貨',payment:'待付款',done:'已結單'};
+    
+    // 生成合併商品的明細摘要顯示 (例如: B商品 + C商品 等 3 樣商品)
+    let itemsSummary = '';
+    if (o.items && o.items.length) {
+      const first = o.items[0];
+      const count = o.items.length;
+      itemsSummary = `${first.productName}${first.specLabel ? ' ('+first.specLabel+')' : ''}${count > 1 ? ' 等 ' + count + ' 樣商品' : ''} × ${o.items.reduce((s,i)=>s+i.qty,0)}`;
+    } else {
+      // 支援歷史舊格式訂單
+      itemsSummary = `${o.productName || '未知商品'}${o.specLabel ? ' ／ '+o.specLabel : ''} × ${o.qty || 1}`;
+    }
+
+    return `<div class="card" style="padding:12px;cursor:pointer" onclick="openOrderDetail('${o.id}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:14px;font-weight:700">${o.customerName||'未知客戶'}</span>
+            <span class="badge ${statusMap[o.status]}">${statusLabel[o.status]}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-secondary)">${itemsSummary}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${o.logistics||''}</div>
+        </div>
+        <div style="text-align:right;flex:0 0 auto">
+          <div class="list-price">NT$ ${(o.total||0).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${new Date(o.createdAt).toLocaleDateString('zh-TW')}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddOrder(){
+  if(!DB.currentPeriod){showToast('請先建立並選擇一個專案檔期才能新增訂單。');return;}
+  // Reset
+  ['o-qty','o-unit-price','o-discount-val','o-shipping-fee','o-shipping-addr'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='o-qty'?1:id==='o-shipping-fee'?0:''});
+  
+  // 清空多品項暫存
+  tempOrderItems = [];
+  document.getElementById('o-items-list').innerHTML = '';
+  document.getElementById('o-items-container').style.display = 'none';
+
+  document.getElementById('o-paid-time').value='';
+  
+  // Populate
+  const custSel=document.getElementById('o-customer');
+  custSel.innerHTML='<option value="">選擇客戶</option>'+DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const prodSel=document.getElementById('o-product');
+  const products=DB.products.filter(p=>!DB.currentPeriod||p.periodId===DB.currentPeriod);
+  prodSel.innerHTML='<option value="">選擇商品</option>'+products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('o-spec-select').style.display='none';
+  
+  // Reset Bank Transfer Fields in Add Order
+  document.getElementById('o-payment').value = '現金付款';
+  document.getElementById('o-pay-bank-name').value = '';
+  document.getElementById('o-pay-bank-account').value = '';
+  document.getElementById('o-pay-bank-holder').value = '';
+  toggleAddOrderPaymentFields();
+
+  calcOrderTotal();
+  openModal('modalAddOrder');
+}
+
+// 動態增加商品到目前訂單的暫存清單中
+function addTempOrderItem() {
+  const prodId = document.getElementById('o-product').value;
+  if (!prodId) { showToast('請選擇要加入的商品'); return; }
+  
+  const prod = DB.products.find(p => p.id === prodId);
+  if (!prod) return;
+  
+  const qty = parseInt(document.getElementById('o-qty').value) || 1;
+  const unitPrice = parseFloat(document.getElementById('o-unit-price').value) || 0;
+  const specSelect = document.getElementById('o-spec-select');
+  const specLabel = specSelect.style.display !== 'none' ? document.getElementById('o-spec').value : '';
+  
+  // 加入多品項清單
+  tempOrderItems.push({
+    itemId: uid(),
+    productId: prodId,
+    productName: prod.name,
+    specLabel: specLabel,
+    qty: qty,
+    unitPrice: unitPrice,
+    costTWD: (prod.cost || 0) * (prod.rate || 1)
+  });
+  
+  showToast('✓ 商品已成功加入清單');
+  renderTempOrderItems();
+  calcOrderTotal();
+}
+
+function removeTempOrderItem(itemId) {
+  tempOrderItems = tempOrderItems.filter(item => item.itemId !== itemId);
+  renderTempOrderItems();
+  calcOrderTotal();
+}
+
+function renderTempOrderItems() {
+  const container = document.getElementById('o-items-container');
+  const list = document.getElementById('o-items-list');
+  
+  if (!tempOrderItems.length) {
+    container.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  
+  container.style.display = 'block';
+  list.innerHTML = tempOrderItems.map(item => `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.productName}</div>
+        ${item.specLabel ? `<div style="font-size:11px; color:var(--warm-500); margin-top:2px;">規格: ${item.specLabel}</div>` : ''}
+        <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">NT$ ${item.unitPrice.toLocaleString()} × ${item.qty}</div>
+      </div>
+      <div style="text-align:right; flex:0 0 auto; display:flex; align-items:center; gap:8px;">
+        <span style="font-family:'SF Mono','Fira Code',monospace; font-size:13px; font-weight:700; color:var(--warm-600)">NT$ ${(item.unitPrice * item.qty).toLocaleString()}</span>
+        <button type="button" style="background:none; border:none; color:var(--red); font-size:16px; cursor:pointer;" onclick="removeTempOrderItem('${item.itemId}')">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleAddOrderPaymentFields() {
+  const pType = document.getElementById('o-payment').value;
+  const container = document.getElementById('o-bank-transfer-fields');
+  if (pType === '銀行轉帳') {
+    container.style.display = 'block';
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+function onOrderProductChange(){
+  const id=document.getElementById('o-product').value;
+  const prod=DB.products.find(p=>p.id===id);
+  if(prod){
+    document.getElementById('o-unit-price').value=prod.price||0;
+    if(prod.specs&&prod.specs.length){
+      const sel=document.getElementById('o-spec');
+      sel.innerHTML=prod.specs.map(s=>`<option value="${s.label}" data-price="${s.price}">${s.label} - NT$ ${s.price}</option>`).join('');
+      document.getElementById('o-spec-select').style.display='block';
+      
+      // Initialize spec pricing based on choice
+      document.getElementById('o-unit-price').value = prod.specs[0].price;
+      
+      sel.onchange=function(){
+        const sp=parseFloat(this.options[this.selectedIndex].dataset.price)||prod.price||0;
+        document.getElementById('o-unit-price').value=sp;
+        calcOrderTotal();
+      };
+    } else {
+      document.getElementById('o-spec-select').style.display='none';
+    }
+  }
+  calcOrderTotal();
+}
+
+function onLogisticsChange(){
+  const v=document.getElementById('o-logistics').value;
+  const feeMap={'面交':0,'7-11貨到付款':60,'7-11取貨':60,'全家貨到付款':60,'全家取貨':60,'OKmart':60,'宅配':150};
+  document.getElementById('o-shipping-fee').value=feeMap[v]||0;
+  calcOrderTotal();
+}
+
+function calcOrderTotal(){
+  // 從多品項暫存清單中加總小計
+  const sub = tempOrderItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+  const discType=document.getElementById('o-discount-type').value;
+  const discVal=parseFloat(document.getElementById('o-discount-val').value)||0;
+  const shipFee=parseFloat(document.getElementById('o-shipping-fee').value)||0;
+  let discAmt=0;
+  if(discType==='amount')discAmt=discVal;
+  else if(discType==='pct')discAmt=sub*(1-discVal/10);
+  const total=sub-discAmt+shipFee;
+  
+  document.getElementById('o-sub-total').textContent='NT$ '+sub.toLocaleString();
+  document.getElementById('o-discount-display').textContent='- NT$ '+Math.round(discAmt).toLocaleString();
+  document.getElementById('o-ship-display').textContent='NT$ '+shipFee.toLocaleString();
+  document.getElementById('o-total').textContent='NT$ '+Math.max(0,Math.round(total)).toLocaleString();
+}
+
+function saveOrder(){
+  const custId=document.getElementById('o-customer').value;
+  if(!custId){showToast('請選擇客戶');return;}
+  if(!tempOrderItems.length){showToast('明細清單中尚未加入任何商品品項');return;}
+
+  const cust=DB.customers.find(c=>c.id===custId);
+  const sub = tempOrderItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+  const discType=document.getElementById('o-discount-type').value;
+  const discVal=parseFloat(document.getElementById('o-discount-val').value)||0;
+  let discAmt=0;
+  if(discType==='amount')discAmt=discVal;
+  else if(discType==='pct')discAmt=sub*(1-discVal/10);
+  const shipFee=parseFloat(document.getElementById('o-shipping-fee').value)||0;
+  const total=Math.max(0,Math.round(sub-discAmt+shipFee));
+  
+  const isInitialPaid = !!document.getElementById('o-paid-time').value;
+  const pType = document.getElementById('o-payment').value;
+  
+  const order={
+    id:uid(),periodId:DB.currentPeriod,
+    customerId:custId,customerName:cust.name,
+    items: JSON.parse(JSON.stringify(tempOrderItems)), // 深拷貝
+    discountType:discType,discountVal:discVal,discountAmt:Math.round(discAmt),
+    discountNote:document.getElementById('o-discount-note').value,
+    logistics:document.getElementById('o-logistics').value,
+    shippingFee:shipFee,
+    shippingAddr:document.getElementById('o-shipping-addr').value,
+    payment:pType,
+    payBankName: pType === '銀行轉帳' ? document.getElementById('o-pay-bank-name').value.trim() : '',
+    payBankAccount: pType === '銀行轉帳' ? document.getElementById('o-pay-bank-account').value.trim() : '',
+    payBankHolder: pType === '銀行轉帳' ? document.getElementById('o-pay-bank-holder').value.trim() : '',
+    paidTime:document.getElementById('o-paid-time').value,
+    total,
+    status: isInitialPaid ? 'shipping' : 'pending',
+    isShipped: false,
+    isPaid: isInitialPaid,
+    trackingCode:'',trackingCo:'',
+    bought:false,
+    outOfStock:false,
+    createdAt:new Date().toISOString()
+  };
+  
+  DB.orders.push(order);
+  save('orders',DB.orders);
+  
+  tempOrderItems = []; // 清空暫存
+  closeModal('modalAddOrder');
+  renderOrders(currentOrderTab);
+  renderHome();
+  renderPurchase();
+  showToast('合計訂單建立成功！');
+}
+
+let editingOrderId=null;
+function openOrderDetail(id){
+  editingOrderId=id;
+  const o=DB.orders.find(x=>x.id===id);
+  if(!o)return;
+  
+  // 初始化狀態相容性
+  if (o.isShipped === undefined) o.isShipped = (o.status === 'done' || o.status === 'payment');
+  if (o.isPaid === undefined) o.isPaid = (o.status === 'done' || o.status === 'shipping' || !!o.paidTime);
+  
+  document.getElementById('orderDetailTitle').textContent=o.customerName+' 的合計訂單';
+  const statusMap={pending:'badge-pending',shipping:'badge-shipping',payment:'badge-payment',done:'badge-done'};
+  const statusLabel={pending:'待處理',shipping:'待出貨',payment:'待付款',done:'已結單'};
+
+  // 渲染多品項細項清單
+  let itemsListHtml = '';
+  let subTotal = 0;
+  if (o.items && o.items.length) {
+    subTotal = o.items.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
+    itemsListHtml = o.items.map(item => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.productName}</div>
+          ${item.specLabel ? `<div style="font-size:11px; color:var(--warm-500); margin-top:2px;">規格: ${item.specLabel}</div>` : ''}
+          <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">NT$ ${item.unitPrice.toLocaleString()} × ${item.qty}</div>
+        </div>
+        <div style="text-align:right; font-family:'SF Mono','Fira Code',monospace; font-size:13px; font-weight:700; color:var(--text-secondary);">
+          NT$ ${(item.unitPrice * item.qty).toLocaleString()}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    // 支援舊格式訂單
+    subTotal = (o.qty || 1) * (o.unitPrice || 0);
+    itemsListHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:700; color:var(--text-primary);">${o.productName || '未知商品'}</div>
+          ${o.specLabel ? `<div style="font-size:11px; color:var(--warm-500); margin-top:2px;">規格: ${o.specLabel}</div>` : ''}
+          <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">NT$ ${(o.unitPrice || 0).toLocaleString()} × ${o.qty || 1}</div>
+        </div>
+        <div style="text-align:right; font-family:'SF Mono','Fira Code',monospace; font-size:13px; font-weight:700; color:var(--text-secondary);">
+          NT$ ${subTotal.toLocaleString()}
+        </div>
+      </div>
+    `;
+  }
+
+  // 專屬對帳連結產生器
+  const token=btoa(id).replace(/=/g,'');
+  const shareUrl=window.location.href.split('#')[0]+'#order/'+token;
+
+  document.getElementById('orderDetailBody').innerHTML=`
+    <div class="card">
+      <div class="card-title">訂單資訊</div>
+      <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span class="section-label" style="margin:0;">訂單狀態：</span>
+        <span class="badge ${statusMap[o.status] || 'badge-pending'}">${statusLabel[o.status] || o.status}</span>
+      </div>
+      <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">
+        客戶：<span style="color:var(--warm-600);">${o.customerName}</span>
+      </div>
+      
+      <!-- 顯示商品合併細項清單 -->
+      <div style="background:#fafafa; padding:10px 14px; border-radius:8px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">已訂購明細清單</div>
+        ${itemsListHtml}
+      </div>
+
+      <div style="margin-top:10px" class="form-row">
+        <div><span class="section-label">合計小計</span><div style="font-size:13px;margin-top:2px">NT$ ${subTotal.toLocaleString()}</div></div>
+        <div><span class="section-label">活動折讓</span><div style="font-size:13px;margin-top:2px; color:var(--red); font-weight:700;">- NT$ ${(o.discountAmt||0).toLocaleString()}</div></div>
+        <div><span class="section-label">物流運費</span><div style="font-size:13px;margin-top:2px">NT$ ${(o.shippingFee||0).toLocaleString()}</div></div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:14px">合計應付總額</span>
+        <span class="list-price" style="font-size:18px">NT$ ${(o.total||0).toLocaleString()}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">物流資訊</div>
+      <div class="form-group"><label>物流方式</label>
+        <select class="form-control" id="od-logistics">
+          ${['面交','7-11貨到付款','7-11取貨','全家貨到付款','全家取貨','OKmart','宅配'].map(l=>`<option${l===o.logistics?' selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>物流公司追蹤</label>
+          <select class="form-control" id="od-tracking-co">
+            <option ${o.trackingCo==='黑貓宅急便'?'selected':''}>黑貓宅急便</option>
+            <option ${o.trackingCo==='宅配通'?'selected':''}>宅配通</option>
+            <option ${o.trackingCo==='統一速達'?'selected':''}>統一速達</option>
+            <option ${o.trackingCo==='7-11'?'selected':''}>7-11</option>
+            <option ${o.trackingCo==='全家'?'selected':''}>全家</option>
+            <option ${o.trackingCo==='OKmart'?'selected':''}>OKmart</option>
+            <option ${o.trackingCo==='郵局'?'selected':''}>郵局</option>
+            <option ${o.trackingCo==='嘉里大榮'?'selected':''}>嘉里大榮</option>
+          </select>
+        </div>
+        <div class="form-group"><label>追蹤碼</label><input type="text" class="form-control" id="od-tracking" placeholder="貨運追蹤號" value="${o.trackingCode||''}"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">付款資訊</div>
+      <div class="form-group"><label>付款方式</label>
+        <select class="form-control" id="od-payment" onchange="toggleDetailOrderPaymentFields()">
+          ${['現金付款','銀行轉帳','貨到付款'].map(p=>`<option${p===o.payment?' selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      
+      <!-- 銀行帳戶付款資訊明細 -->
+      <div id="od-bank-transfer-fields" style="${o.payment === '銀行轉帳' ? 'display:block' : 'display:none'}; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--warm-100);">
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label style="font-size: 11px; font-weight: 700;">轉帳銀行</label>
+          <input type="text" class="form-control" id="od-pay-bank-name" placeholder="例如：中國信託" value="${o.payBankName || ''}">
+        </div>
+        <div class="form-row" style="margin-bottom: 0;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px; font-weight: 700;">轉帳帳號 / 後五碼</label>
+            <input type="text" class="form-control" id="od-pay-bank-account" placeholder="帳號或後五碼" value="${o.payBankAccount || ''}">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px; font-weight: 700;">轉帳戶名</label>
+            <input type="text" class="form-control" id="od-pay-bank-holder" placeholder="付款戶名" value="${o.payBankHolder || ''}">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group"><label>已付款時間</label><input type="datetime-local" class="form-control" id="od-paid-time" value="${o.paidTime||''}"></div>
+    </div>
+
+    <!-- 訂單資訊照片檔匯出區塊 -->
+    <div class="card">
+      <div class="card-title">訂單對帳照片檔</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">匯出此訂單的專屬明細、物流詳情與付款圖卡，可直接發送給客戶核對。</div>
+      <button class="btn btn-outline btn-sm" style="width:100%; font-weight: 700; gap: 6px; margin-bottom: 8px;" onclick="exportOrderCard('${o.id}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        產生並下載對帳圖卡 (照片檔)
+      </button>
+      <button class="btn btn-outline btn-sm" style="width:100%; font-weight:600;" onclick="copyOrderLink('${shareUrl}')">
+        複製買家對帳專屬連結
+      </button>
+    </div>
+
+    <!-- 已出貨與已付款獨立按鈕切換流程 -->
+    <div class="card">
+      <div class="card-title">狀態管理流程</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <button class="btn ${o.isShipped?'btn-success':'btn-outline'}" onclick="toggleOrderShipStatus('${o.id}')" style="font-size: 13px; font-weight: 700;">
+          ${o.isShipped?'✓ 已出貨':'標記已出貨'}
+        </button>
+        <button class="btn ${o.isPaid?'btn-success':'btn-outline'}" onclick="toggleOrderPayStatus('${o.id}')" style="font-size: 13px; font-weight: 700;">
+          ${o.isPaid?'✓ 已付款':'標記已付款'}
+        </button>
+      </div>
+      ${o.status!=='done'?`
+        <button class="btn ${o.isShipped && o.isPaid ? 'btn-primary' : 'btn-outline'}" style="width:100%;font-weight:700;" onclick="completeOrder('${o.id}')" ${o.isShipped && o.isPaid ? '' : 'disabled'}>
+          ${o.isShipped && o.isPaid ? '確認結單' : '需完成出貨與付款才可結單'}
+        </button>
+      `: `<div style="text-align:center;font-size:13px;color:var(--green);font-weight:700;padding:4px 0;">✓ 此訂單已結單</div>`}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-danger btn-sm" style="width: 100%;" onclick="deleteOrder('${o.id}')">刪除訂單</button>
+    </div>
+  `;
+  openModal('modalOrderDetail');
+}
+
+function toggleDetailOrderPaymentFields() {
+  const pType = document.getElementById('od-payment').value;
+  const container = document.getElementById('od-bank-transfer-fields');
+  if (container) {
+    container.style.display = pType === '銀行轉帳' ? 'block' : 'none';
+  }
+}
+
+function advanceOrderStatus(id){
+  const o=DB.orders.find(x=>x.id===id);
+  if(!o)return;
+  const flow=['pending','shipping','payment','done'];
+  const idx=flow.indexOf(o.status);
+  if(idx<flow.length-1){o.status=flow[idx+1];save('orders',DB.orders);renderOrders(o.status);renderHome();renderPurchase();closeModal('modalOrderDetail');showToast('進度已推進');}
+}
+
+function saveOrderDetail(){
+  const o=DB.orders.find(x=>x.id===editingOrderId);
+  if(!o)return;
+  
+  const pType = document.getElementById('od-payment').value;
+  o.payment = pType;
+  if (pType === '銀行轉帳') {
+    o.payBankName = document.getElementById('od-pay-bank-name').value.trim();
+    o.payBankAccount = document.getElementById('od-pay-bank-account').value.trim();
+    o.payBankHolder = document.getElementById('od-pay-bank-holder').value.trim();
+  } else {
+    o.payBankName = '';
+    o.payBankAccount = '';
+    o.payBankHolder = '';
+  }
+  
+  o.logistics=document.getElementById('od-logistics').value;
+  o.trackingCo=document.getElementById('od-tracking-co').value;
+  o.trackingCode=document.getElementById('od-tracking').value;
+  o.paidTime=document.getElementById('od-paid-time').value;
+  
+  // 同步已付款時間與已付款布林值
+  if (o.paidTime) {
+    o.isPaid = true;
+  }
+  
+  save('orders',DB.orders);
+  closeModal('modalOrderDetail');
+  renderOrders(currentOrderTab);
+  renderHome();
+  renderPurchase();
+  showToast('訂單詳情已儲存');
+}
+
+function deleteOrder(id){
+  showConfirm('刪除訂單', '確定刪除此訂單嗎？相關交易記錄將會被永久移除。', (yes) => {
+    if (yes) {
+      DB.orders=DB.orders.filter(o=>o.id!==id);
+      save('orders',DB.orders);
+      closeModal('modalOrderDetail');
+      renderOrders(currentOrderTab);
+      renderHome();
+      renderPurchase();
+      showToast('訂單已刪除');
+    }
+  });
+}
+
+function toggleOrderShipStatus(id) {
+  const o = DB.orders.find(x => x.id === id);
+  if (!o) return;
+  o.isShipped = !o.isShipped;
+  
+  // 動態更新當前待辦分類 (不影響已結單狀態)
+  if (o.status !== 'done') {
+    if (o.isShipped && !o.isPaid) {
+      o.status = 'payment'; // 已出貨待付款
+    } else if (!o.isShipped && o.isPaid) {
+      o.status = 'shipping'; // 已付款待出貨
+    } else if (!o.isShipped && !o.isPaid) {
+      o.status = 'pending'; // 雙重待處理
+    }
+  }
+  save('orders', DB.orders);
+  openOrderDetail(id);
+  renderOrders(currentOrderTab);
+  renderHome();
+  renderPurchase();
+  showToast(`出貨狀態已變更為：${o.isShipped ? '已出貨' : '未出貨'}`);
+}
+
+function toggleOrderPayStatus(id) {
+  const o = DB.orders.find(x => x.id === id);
+  if (!o) return;
+  o.isPaid = !o.isPaid;
+  
+  // 動態更新當前待辦分類 (不影響已結單狀態)
+  if (o.status !== 'done') {
+    if (o.isShipped && !o.isPaid) {
+      o.status = 'payment';
+    } else if (!o.isShipped && o.isPaid) {
+      o.status = 'shipping';
+    } else if (!o.isShipped && !o.isPaid) {
+      o.status = 'pending';
+    }
+  }
+  save('orders', DB.orders);
+  openOrderDetail(id);
+  renderOrders(currentOrderTab);
+  renderHome();
+  renderPurchase();
+  showToast(`付款狀態已變更為：${o.isPaid ? '已付款' : '未付款'}`);
+}
+
+function completeOrder(id) {
+  const o = DB.orders.find(x => x.id === id);
+  if (!o) return;
+  if (o.isShipped && o.isPaid) {
+    o.status = 'done';
+    save('orders', DB.orders);
+    closeModal('modalOrderDetail');
+    renderOrders(currentOrderTab);
+    renderHome();
+    renderPurchase();
+    showToast('🎉 訂單已順利完成結單！');
+  } else {
+    showToast('必須同時完成「已出貨」與「已付款」才可結單！');
+  }
+}
+
+function exportStoreCard() {
+  const store = DB.settings;
+  const logoHtml = store.logoData ? `<img src="${store.logoData}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 14px; border: 2px solid #ede5db;">` : `
+    <div style="width: 80px; height: 80px; background: #8b7355; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px;">🧚</div>
+  `;
+  
+  const container = document.getElementById('exportTemplateContainer');
+  container.innerHTML = `
+    <div id="exportStoreCardElement" style="width: 600px; padding: 35px; background: #fafaf9; border: 1px solid #ede5db; border-radius: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #0f172a; box-sizing: border-box; position: relative; overflow: hidden; background-image: radial-gradient(#ede5db 1px, transparent 1px); background-size: 20px 20px;">
+      <div style="position: absolute; right: 25px; top: 25px; font-size: 11px; font-weight: 800; color: #b5a08a; letter-spacing: 2px; text-transform: uppercase;">Fairy Godmother</div>
+      <div style="display: flex; gap: 20px; align-items: center; border-bottom: 2px solid #ede5db; padding-bottom: 22px; margin-bottom: 26px;">
+        ${logoHtml}
+        <div>
+          <h2 style="margin: 0; font-size: 24px; font-weight: 800; color: #6b5a42; font-family: Georgia, serif;">Fairy godmother 代購</h2>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b; font-weight: 600;">官方匯款與寄件資料卡</p>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 26px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #8b7355; letter-spacing: 1px;">📮 寄件人資訊</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 7px 0; color: #64748b; width: 110px; font-weight: 600;">寄件姓名</td>
+            <td style="padding: 7px 0; color: #0f172a; font-weight: 700;">${store.storeShipName || '未填寫'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 7px 0; color: #64748b; font-weight: 600;">寄件電話</td>
+            <td style="padding: 7px 0; color: #0f172a; font-weight: 700; font-family: monospace;">${store.storeShipPhone || '未填寫'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 7px 0; color: #64748b; font-weight: 600;">聯絡信箱</td>
+            <td style="padding: 7px 0; color: #0f172a; font-weight: 500;">${store.storeShipEmail || '未填寫'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #ede5db; border-radius: 14px; padding: 22px; box-shadow: 0 6px 16px rgba(107,90,66,0.03);">
+        <h3 style="margin: 0 0 14px 0; font-size: 14px; font-weight: 800; color: #8b7355; letter-spacing: 1px;">🏦 指定收款帳號</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 10px 0; color: #64748b; width: 110px; font-weight: 600; border-bottom: 1px solid #f1f5f9;">收款銀行</td>
+            <td style="padding: 10px 0; color: #0f172a; font-weight: 700; border-bottom: 1px solid #f1f5f9;">${store.bankName || '未填寫'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; color: #64748b; font-weight: 600; border-bottom: 1px solid #f1f5f9;">匯款帳號</td>
+            <td style="padding: 10px 0; color: #8b7355; font-family: monospace; font-size: 16px; font-weight: 800; border-bottom: 1px solid #f1f5f9; letter-spacing: 0.5px;">${store.bankAccount || '未填寫'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; color: #64748b; font-weight: 600; border-bottom: 1px solid #f1f5f9;">帳戶戶名</td>
+            <td style="padding: 10px 0; color: #0f172a; font-weight: 700; border-bottom: 1px solid #f1f5f9;">${store.bankHolder || '未填寫'}</td>
+          </tr>
+          ${store.bankNote ? `
+          <tr>
+            <td style="padding: 10px 0; color: #64748b; font-weight: 600;">備註說明</td>
+            <td style="padding: 10px 0; color: #475569; font-size: 12px; line-height: 1.5;">${store.bankNote}</td>
+          </tr>` : ''}
+        </table>
+      </div>
+      <div style="margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; font-weight: 500;">
+        Fairy Godmother 代購後台自動匯出 • 祝您購物連連順利
+      </div>
+    </div>
+  `;
+  
+  showToast('正在產生店家資訊照片檔...');
+  
+  setTimeout(() => {
+    const element = document.getElementById('exportStoreCardElement');
+    html2canvas(element, {
+      scale: 2.5, // 提高縮放比例以保證匯出照片清晰度
+      useCORS: true,
+      backgroundColor: '#fafaf9'
+    }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `店家資訊及匯款卡_${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('照片檔下載成功！');
+    }).catch(err => {
+      console.error(err);
+      showToast('產生照片檔失敗。');
+    });
+  }, 300);
+}
+
+function exportOrderCard(id) {
+  const o = DB.orders.find(x => x.id === id);
+  if (!o) return;
+  const store = DB.settings;
+  const logoHtml = store.logoData ? `<img src="${store.logoData}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10px;">` : `
+    <div style="width: 60px; height: 60px; background: #8b7355; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">🧚</div>
+  `;
+
+  // 支援多商品明細的 HTML 生成
+  let itemsHtml = '';
+  if (o.items && o.items.length) {
+    itemsHtml = o.items.map(item => `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px 0; color: #0f172a; font-weight: 700; font-size:13px;">
+          ${item.productName}
+          ${item.specLabel ? `<span style="display:block; font-size:11px; color:#6b5a42; font-weight:500; margin-top:2px;">規格: ${item.specLabel}</span>` : ''}
+        </td>
+        <td style="padding: 10px 0; color: #64748b; font-weight: 500; text-align: center; font-size:13px;">${item.qty} 件</td>
+        <td style="padding: 10px 0; color: #0f172a; font-weight: 600; text-align: right; font-family: monospace; font-size:13px;">NT$ ${item.unitPrice.toLocaleString()}</td>
+      </tr>
+    `).join('');
+  } else {
+    // 支援舊版舊格式相容
+    itemsHtml = `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px 0; color: #0f172a; font-weight: 700; font-size:13px;">
+          ${o.productName || '未知商品'}
+          ${o.specLabel ? `<span style="display:block; font-size:11px; color:#6b5a42; font-weight:500; margin-top:2px;">規格: ${o.specLabel}</span>` : ''}
+        </td>
+        <td style="padding: 10px 0; color: #64748b; font-weight: 500; text-align: center; font-size:13px;">${o.qty || 1} 件</td>
+        <td style="padding: 10px 0; color: #0f172a; font-weight: 600; text-align: right; font-family: monospace; font-size:13px;">NT$ ${(o.unitPrice || 0).toLocaleString()}</td>
+      </tr>
+    `;
+  }
+  
+  const container = document.getElementById('exportTemplateContainer');
+  container.innerHTML = `
+    <div id="exportOrderCardElement" style="width: 600px; padding: 35px; background: #ffffff; border: 1px solid #ede5db; border-radius: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #0f172a; box-sizing: border-box; position: relative; overflow: hidden; background-image: radial-gradient(#ede5db 1px, transparent 1px); background-size: 20px 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px dashed #ede5db; padding-bottom: 22px; margin-bottom: 26px;">
+        <div style="display: flex; gap: 14px; align-items: center;">
+          ${logoHtml}
+          <div>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #6b5a42; font-family: Georgia, serif;">Fairy godmother 代購</h2>
+            <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Order Confirmation</p>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 13px; color: #64748b; font-weight: 600;">專屬訂單對帳卡</div>
+          <div style="font-size: 11px; color: #94a3b8; margin-top: 5px; font-family: monospace; font-weight: 700;">ID: ${o.id.slice(-6).toUpperCase()}</div>
+        </div>
+      </div>
+      
+      <!-- 顧客及訂購商品多明細 -->
+      <div style="background: #fdfbf7; border: 1px solid #f5ede3; border-radius: 14px; padding: 22px; margin-bottom: 18px; box-shadow: 0 4px 10px rgba(139,115,85,0.02);">
+        <div style="font-size: 14px; font-weight: 800; color: #8b7355; margin-bottom: 12px; border-bottom: 1px solid #f5ede3; padding-bottom: 8px; letter-spacing: 0.5px;">📋 訂購明細</div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom:12px;">
+          <thead>
+            <tr style="border-bottom:1px solid #ede5db;">
+              <th style="text-align:left; padding-bottom:8px; color:#64748b; font-size:12px;">商品</th>
+              <th style="text-align:center; padding-bottom:8px; color:#64748b; font-size:12px; width:70px;">數量</th>
+              <th style="text-align:right; padding-bottom:8px; color:#64748b; font-size:12px; width:100px;">單價</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          ${o.discountAmt ? `
+          <tr>
+            <td style="padding: 7px 0; color: #64748b; font-weight: 500;">活動折讓</td>
+            <td style="padding: 7px 0; color: #dc2626; font-weight: 700; text-align: right;">- NT$ ${o.discountAmt.toLocaleString()}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding: 7px 0; color: #64748b; font-weight: 500;">運費金額 (${o.logistics})</td>
+            <td style="padding: 7px 0; color: #0f172a; font-weight: 600; text-align: right;">NT$ ${o.shippingFee.toLocaleString()}</td>
+          </tr>
+          <tr style="border-top: 1px solid #ede5db;">
+            <td style="padding: 14px 0 0 0; color: #0f172a; font-weight: 800; font-size: 14px;">應付合計總金額</td>
+            <td style="padding: 14px 0 0 0; color: #8b7355; font-size: 19px; font-weight: 900; text-align: right; font-family: monospace;">NT$ ${o.total.toLocaleString()}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- 物流即時配送狀態 -->
+      <div style="background: #fafaf9; border: 1px solid #ede5db; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
+        <div style="font-size: 13px; font-weight: 800; color: #8b7355; margin-bottom: 10px; border-bottom: 1px dashed #ede5db; padding-bottom: 6px; letter-spacing: 0.5px;">🚚 物流配送詳情</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-weight: 500; width: 100px;">寄送方式</td>
+            <td style="padding: 5px 0; color: #0f172a; font-weight: 700; text-align: right;">${o.logistics || '未定'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-weight: 500;">收件門市/地址</td>
+            <td style="padding: 5px 0; color: #0f172a; font-weight: 600; text-align: right; word-break: break-all;">${o.shippingAddr || '尚未提供寄送資訊'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-weight: 500;">出貨狀態</td>
+            <td style="padding: 5px 0; color: ${o.isShipped ? 'var(--green)' : 'var(--amber)'}; font-weight: 800; text-align: right;">
+              ${o.isShipped ? `已出貨 (${o.trackingCo || ''} ${o.trackingCode || ''})` : '採購/備貨中'}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- 收款狀態 & 指定匯款 -->
+      <div style="background: #fafaf9; border: 1px solid #ede5db; border-radius: 14px; padding: 18px;">
+        <div style="font-size: 13px; font-weight: 800; color: #8b7355; margin-bottom: 10px; border-bottom: 1px dashed #ede5db; padding-bottom: 6px; letter-spacing: 0.5px;">💳 收款與對帳資訊</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-weight: 500; width: 100px;">付款方式</td>
+            <td style="padding: 5px 0; color: #0f172a; font-weight: 700; text-align: right;">${o.payment || '未定'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: ${o.isPaid ? 'var(--green)' : 'var(--red)'}; font-weight: 500;">對帳狀態</td>
+            <td style="padding: 5px 0; color: ${o.isPaid ? 'var(--green)' : 'var(--red)'}; font-weight: 800; text-align: right;">
+              ${o.isPaid ? '✓ 已確認收款' : '⚠️ 待核對付款'}
+            </td>
+          </tr>
+          
+          <!-- 已轉帳明細顯示 -->
+          ${o.payment === '銀行轉帳' && o.isPaid && (o.payBankName || o.payBankAccount) ? `
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; font-weight: 500;">買家轉帳資訊</td>
+            <td style="padding: 5px 0; color: #475569; font-weight: 700; text-align: right; font-size: 12px; font-family: monospace;">
+              ${o.payBankName || ''} (${o.payBankAccount || ''}) ${o.payBankHolder ? '戶名: ' + o.payBankHolder : ''}
+            </td>
+          </tr>` : ''}
+        </table>
+        
+        <!-- 未付款時，自動附上指定匯款帳號 -->
+        ${o.payment === '銀行轉帳' && !o.isPaid ? `
+        <div style="margin-top: 12px; border-top: 1px dashed #ede5db; padding-top: 10px;">
+          <div style="font-size: 12px; font-weight: 700; color: #8b7355; margin-bottom: 6px;">🏦 請轉帳至以下指定代購帳戶：</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <tr>
+              <td style="padding: 4px 0; color: #64748b;">指定銀行</td>
+              <td style="padding: 4px 0; color: #0f172a; font-weight: 700; text-align: right;">${store.bankName || '未填寫'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #64748b;">收款帳號</td>
+              <td style="padding: 4px 0; color: #8b7355; font-weight: 800; font-family: monospace; text-align: right; letter-spacing: 0.5px;">${store.bankAccount || '未填寫'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #64748b;">帳戶戶名</td>
+              <td style="padding: 4px 0; color: #0f172a; font-weight: 700; text-align: right;">${store.bankHolder || '未填寫'}</td>
+            </tr>
+          </table>
+        </div>` : ''}
+      </div>
+
+      <div style="margin-top: 24px; text-align: center; font-size: 11px; color: #cbd5e1; font-weight: 500;">
+        Fairy Godmother 代購系統自動產生 • ${new Date().toLocaleDateString('zh-TW')}
+      </div>
+    </div>
+  `;
+  
+  showToast('正在產生合計訂單確認圖卡...');
+  
+  setTimeout(() => {
+    const element = document.getElementById('exportOrderCardElement');
+    html2canvas(element, {
+      scale: 2.5,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `合併訂單對帳卡_${o.customerName}_${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('合計對帳圖卡下載成功！');
+    }).catch(err => {
+      console.error(err);
+      showToast('產生圖卡失敗。');
+    });
+  }, 300);
+}
+
+function copyOrderLink(url){
+  navigator.clipboard.writeText(url).then(()=>showToast('連結已複製！可傳給客戶查詢訂單進度')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('連結已複製！');
+  });
+}
+
+// ══════════════════════════════════════════
+// PURCHASE (採購)
+// ══════════════════════════════════════════
+function renderPurchase(){
+  // 匯總所有非結單項目
+  const orders=DB.currentPeriod?DB.orders.filter(o=>o.periodId===DB.currentPeriod&&o.status!=='done'):DB.orders.filter(o=>o.status!=='done');
+  
+  // 建立採購群組：將「同商品 + 同規格」合併為一筆採購項目
+  const qtyMap={};
+  orders.forEach(o=>{
+    if (o.items && o.items.length) {
+      o.items.forEach(item => {
+        const key=item.productId+'_'+(item.specLabel||'');
+        if(!qtyMap[key]){
+          qtyMap[key]={
+            name: item.productName+(item.specLabel?' ('+item.specLabel+')':''),
+            qty: 0,
+            unitCost: item.costTWD||0,
+            bought: o.bought || false,
+            outOfStock: o.outOfStock || false,
+            id: key,
+            orders: [] // 保留原始訂單引用
+          };
+        }
+        qtyMap[key].qty+=(item.qty||1);
+        qtyMap[key].orders.push(o);
+      });
+    } else {
+      // 支援舊格式訂單
+      const key=o.productId+'_'+(o.specLabel||'');
+      if(!qtyMap[key]){
+        qtyMap[key]={
+          name: o.productName+(o.specLabel?' ('+o.specLabel+')':''),
+          qty: 0,
+          unitCost: o.costTWD||0,
+          bought: o.bought || false,
+          outOfStock: o.outOfStock || false,
+          id: key,
+          orders: []
+        };
+      }
+      qtyMap[key].qty+=(o.qty||1);
+      qtyMap[key].orders.push(o);
+    }
+  });
+  
+  const items=Object.values(qtyMap);
+  const el=document.getElementById('purchaseList');
+  if(!items.length){
+    el.innerHTML='<div class="empty-state" style="padding:24px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg><p>結單後系統將自動匯整採購清單</p></div>';
+    document.getElementById('totalProcCost').textContent='NT$ 0';
+    return;
+  }
+  
+  el.innerHTML=items.map(item=>`
+    <div class="proc-row" id="proc-${item.id}">
+      <div class="proc-check ${item.bought?' checked':''}" onclick="toggleProcCheck('${item.id}', this)">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="proc-qty-box">×${item.qty}</div>
+      <div class="list-info">
+        <div class="list-name ${item.outOfStock?'line-through text-muted':''}">${item.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">單位成本 NT$ ${(item.unitCost||0).toLocaleString()}</div>
+      </div>
+      <div>
+        <select style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:#fff;color:var(--text-secondary)" onchange="setProcStatus('${item.id}',this.value)">
+          <option value="pending" ${(!item.bought && !item.outOfStock)?'selected':''}>進行中</option>
+          <option value="bought" ${item.bought?'selected':''}>已採購</option>
+          <option value="outofstock" ${item.outOfStock?'selected':''}>斷貨/未買到</option>
+        </select>
+      </div>
+    </div>
+  `).join('');
+  
+  const totalCost=items.filter(i=>!i.outOfStock).reduce((s,i)=>s+i.unitCost*i.qty,0);
+  document.getElementById('totalProcCost').textContent='NT$ '+Math.round(totalCost).toLocaleString();
+}
+
+function toggleProcCheck(id, el){
+  const isChecked = el.classList.toggle('checked');
+  setProcStatus(id, isChecked ? 'bought' : 'pending');
+}
+
+function setProcStatus(id, val){
+  const orders = DB.orders;
+  orders.forEach(o => {
+    if (o.items && o.items.length) {
+      o.items.forEach(item => {
+        const key = item.productId+'_'+(item.specLabel||'');
+        if (key === id) {
+          if (val === 'bought') {
+            o.bought = true;
+            o.outOfStock = false;
+          } else if (val === 'outofstock') {
+            o.bought = false;
+            o.outOfStock = true;
+          } else {
+            o.bought = false;
+            o.outOfStock = false;
+          }
+        }
+      });
+    } else {
+      const key = o.productId+'_'+(o.specLabel||'');
+      if (key === id) {
+        if (val === 'bought') {
+          o.bought = true;
+          o.outOfStock = false;
+        } else if (val === 'outofstock') {
+          o.bought = false;
+          o.outOfStock = true;
+        } else {
+          o.bought = false;
+          o.outOfStock = false;
+        }
+      }
+    }
+  });
+  save('orders', DB.orders);
+  renderPurchase();
+  renderHome();
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function renderSettings(){
+  // Periods
+  const perEl=document.getElementById('periodListSetting');
+  if(DB.periods.length){
+    perEl.innerHTML=DB.periods.map(p=>`
+      <div class="period-item">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <div class="period-dot" style="background:${DB.currentPeriod===p.id?'var(--warm-500)':'var(--border)'}"></div>
+          <div>
+            <div class="period-name">${p.name}</div>
+            <div class="period-dates">${p.start||''}${p.end?' → '+p.end:''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="selectPeriod('${p.id}')">${DB.currentPeriod===p.id?'使用中':'選用'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePeriod('${p.id}')">刪</button>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    perEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">尚無檔期，請新增</div>';
+  }
+
+  // Categories
+  const catEl=document.getElementById('categoryListSetting');
+  catEl.innerHTML=DB.categories.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <span style="flex:1;font-size:14px">${c.name}</span>
+      <button class="btn btn-outline btn-sm" onclick="renameCategory('${c.id}')">改名</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">刪除</button>
+    </div>
+  `).join('');
+
+  // Compare Links
+  const clEl=document.getElementById('compareLinksList');
+  clEl.innerHTML=DB.compareLinks.map(l=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${l.name}</div>
+        <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.url}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteCompareLink('${l.id}')">刪除</button>
+    </div>
+  `).join('');
+
+  // Customers
+  const custEl=document.getElementById('customerListSetting');
+  if(DB.customers.length){
+    custEl.innerHTML=DB.customers.map(c=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${c.name}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${c.phone||''} ${c.lineId?'/ LINE: '+c.lineId:''}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">刪除</button>
+      </div>
+    `).join('');
+  } else {
+    custEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">尚無客戶資料</div>';
+  }
+
+  // Currency
+  if(DB.settings.defaultCurrency)document.getElementById('defaultCurrency').value=DB.settings.defaultCurrency;
+  if(DB.settings.exchangeRate)document.getElementById('exchangeRate').value=DB.settings.exchangeRate;
+
+  // Store info
+  if(DB.settings.storeShipName)document.getElementById('storeShipName').value=DB.settings.storeShipName;
+  if(DB.settings.storeShipPhone)document.getElementById('storeShipPhone').value=DB.settings.storeShipPhone;
+  if(DB.settings.storeShipEmail)document.getElementById('storeShipEmail').value=DB.settings.storeShipEmail;
+  if(DB.settings.bankName)document.getElementById('bankName').value=DB.settings.bankName;
+  if(DB.settings.bankAccount)document.getElementById('bankAccount').value=DB.settings.bankAccount;
+  if(DB.settings.bankHolder)document.getElementById('bankHolder').value=DB.settings.bankHolder;
+  if(DB.settings.bankNote)document.getElementById('bankNote').value=DB.settings.bankNote;
+  if(DB.settings.logoData){
+    const img=document.createElement('img');img.src=DB.settings.logoData;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';
+    document.getElementById('logoDisplay').innerHTML='';document.getElementById('logoDisplay').appendChild(img);
+  }
+}
+
+function saveSetting(key,val){DB.settings[key]=val;save('settings',DB.settings);}
+
+function saveAllSettings(){
+  DB.settings.storeShipName=document.getElementById('storeShipName').value;
+  DB.settings.storeShipPhone=document.getElementById('storeShipPhone').value;
+  DB.settings.storeShipEmail=document.getElementById('storeShipEmail').value;
+  DB.settings.bankName=document.getElementById('bankName').value;
+  DB.settings.bankAccount=document.getElementById('bankAccount').value;
+  DB.settings.bankHolder=document.getElementById('bankHolder').value;
+  DB.settings.bankNote=document.getElementById('bankNote').value;
+  DB.settings.defaultCurrency=document.getElementById('defaultCurrency').value;
+  DB.settings.exchangeRate=parseFloat(document.getElementById('exchangeRate').value)||1;
+  save('settings',DB.settings);
+  showToast('設定已儲存！');
+}
+
+function uploadLogo(input){
+  if(input.files&&input.files[0]){
+    const reader=new FileReader();
+    reader.onload=function(e){
+      DB.settings.logoData=e.target.result;
+      save('settings',DB.settings);
+      const img=document.createElement('img');img.src=e.target.result;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';
+      document.getElementById('logoDisplay').innerHTML='';document.getElementById('logoDisplay').appendChild(img);
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Periods
+function openAddPeriod(){closeModal('fabMenu');openModal('modalAddPeriod');}
+function savePeriod(){
+  const name=document.getElementById('per-name').value.trim();
+  if(!name){showToast('請輸入檔期名稱');return;}
+  const period={id:uid(),name,start:document.getElementById('per-start').value,end:document.getElementById('per-end').value,desc:document.getElementById('per-desc').value,createdAt:new Date().toISOString()};
+  DB.periods.push(period);
+  save('periods',DB.periods);
+  // Auto-select if first
+  if(DB.periods.length===1){DB.currentPeriod=period.id;localStorage.setItem(KEYS.currentPeriod,period.id);}
+  closeModal('modalAddPeriod');
+  renderSettings();
+  renderHome();
+  showToast('檔期新增成功');
+}
+function selectPeriod(id){
+  DB.currentPeriod=id;localStorage.setItem(KEYS.currentPeriod,id);
+  renderSettings();renderHome();renderProducts();renderOrders(currentOrderTab);renderPurchase();
+  showToast('已切換專案檔期');
+}
+function deletePeriod(id){
+  showConfirm('刪除檔期', '確定刪除此檔期嗎？相關商品與訂單資料不會一併被刪除。', (yes) => {
+    if (yes) {
+      DB.periods=DB.periods.filter(p=>p.id!==id);
+      save('periods',DB.periods);
+      if(DB.currentPeriod===id){DB.currentPeriod=DB.periods[0]?DB.periods[0].id:null;localStorage.setItem(KEYS.currentPeriod,DB.currentPeriod||'');}
+      renderSettings();renderHome();
+      showToast('檔期已刪除');
+    }
+  });
+}
+
+// Categories
+function openAddCategory(){openModal('modalAddCategory');}
+function saveCategory(){
+  const name=document.getElementById('cat-name').value.trim();
+  if(!name)return;
+  DB.categories.push({id:uid(),name});
+  save('categories',DB.categories);
+  document.getElementById('cat-name').value='';
+  closeModal('modalAddCategory');
+  renderSettings();renderCategoryFilterChips();
+  showToast('分類新增成功');
+}
+function renameCategory(id){
+  const cat=DB.categories.find(c=>c.id===id);
+  if(!cat)return;
+  const name=prompt('新名稱：',cat.name);
+  if(name&&name.trim()){cat.name=name.trim();save('categories',DB.categories);renderSettings();renderCategoryFilterChips();showToast('分類改名成功');}
+}
+function deleteCategory(id){
+  showConfirm('刪除分類', '確定要刪除此商品分類嗎？', (yes) => {
+    if (yes) {
+      DB.categories=DB.categories.filter(c=>c.id!==id);
+      save('categories',DB.categories);
+      renderSettings();renderCategoryFilterChips();
+      showToast('分類已刪除');
+    }
+  });
+}
+
+// Customers
+function openAddCustomer(){closeModal('fabMenu');openModal('modalAddCustomer');}
+function saveCustomer(){
+  const name=document.getElementById('cust-name').value.trim();
+  if(!name){showToast('請輸入客戶姓名');return;}
+  DB.customers.push({id:uid(),name,lineId:document.getElementById('cust-line').value,phone:document.getElementById('cust-phone').value,email:document.getElementById('cust-email').value,addr:document.getElementById('cust-addr').value,createdAt:new Date().toISOString()});
+  save('customers',DB.customers);
+  ['cust-name','cust-line','cust-phone','cust-email','cust-addr'].forEach(id=>document.getElementById(id).value='');
+  closeModal('modalAddCustomer');
+  renderSettings();
+  showToast('客戶資料已新增');
+}
+function deleteCustomer(id){
+  showConfirm('刪除客戶', '確定刪除此客戶嗎？此動作無法復原。', (yes) => {
+    if (yes) {
+      DB.customers=DB.customers.filter(c=>c.id!==id);
+      save('customers',DB.customers);
+      renderSettings();
+      showToast('客戶已刪除');
+    }
+  });
+}
+
+// Compare Links
+function openAddCompareLink(){openModal('modalAddCompareLink');}
+function saveCompareLink(){
+  const name=document.getElementById('cl-name').value.trim();
+  const url=document.getElementById('cl-url').value.trim();
+  if(!name||!url){showToast('請填入平台名稱與搜尋網址');return;}
+  DB.compareLinks.push({id:uid(),name,url});
+  save('compareLinks',DB.compareLinks);
+  document.getElementById('cl-name').value='';document.getElementById('cl-url').value='';
+  closeModal('modalAddCompareLink');
+  renderSettings();
+  showToast('比價平台已新增');
+}
+function deleteCompareLink(id){
+  DB.compareLinks=DB.compareLinks.filter(l=>l.id!==id);
+  save('compareLinks',DB.compareLinks);
+  renderSettings();
+  showToast('比價平台已刪除');
+}
+
+// Dynamic display of Transfer Bank details in Add/Detail Modals
+function toggleAddOrderPaymentFields() {
+  const pVal = document.getElementById('o-payment').value;
+  const bankFields = document.getElementById('o-bank-transfer-fields');
+  if (pVal === '銀行轉帳') {
+    bankFields.style.display = 'block';
+  } else {
+    bankFields.style.display = 'none';
+  }
+}
+
+function toggleDetailOrderPaymentFields() {
+  const pVal = document.getElementById('od-payment').value;
+  const bankFields = document.getElementById('od-bank-transfer-fields');
+  if (bankFields) {
+    bankFields.style.display = pVal === '銀行轉帳' ? 'block' : 'none';
+  }
+}
+</script>
+</body>
+</html>
