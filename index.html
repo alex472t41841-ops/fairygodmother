@@ -1477,11 +1477,9 @@ function initFirebaseAuthWatcher(){
 }
 
 // ── 啟動初始化與路由偵測 ──
-window.onload = function() {
-  if (!checkClientRoute()) {
-    initFirebaseAuthWatcher();
-  }
-}
+// 注意：實際的啟動觸發點在檔案最下方的 'fgm-firebase-ready' 事件監聽器，
+// 因為必須等待 Firebase 模組（type="module"，延後載入）初始化完成後才能呼叫。
+// 這裡不重複掛 window.onload，避免登入監聽被註冊兩次、資料被重複讀取渲染。
 
 // 監聽網址變化（如重新貼上對帳網址）
 window.onhashchange = function() {
