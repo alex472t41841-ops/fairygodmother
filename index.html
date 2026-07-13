@@ -233,25 +233,26 @@ select.form-control{cursor:pointer}
     </svg>
   </div>
   <div class="login-title">Fairy godmother</div>
-  <div class="login-sub">私群代購後台管理系統<br>請登入以繼續使用</div>
+  <div class="login-sub" id="loginSubText">私群代購後台管理系統<br>請登入以繼續使用</div>
   <div class="login-card">
+    <div id="loginStatusMsg" style="display:none;font-size:12px;font-weight:600;color:var(--red);background:var(--red-bg);border:1px solid #fca5a5;border-radius:8px;padding:8px 10px;margin-bottom:12px;"></div>
     <div class="form-group">
       <label>帳號 / 電子郵件</label>
       <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com">
     </div>
     <div class="form-group">
       <label>密碼</label>
-      <input type="password" class="form-control" id="loginPwd" placeholder="••••••••">
+      <input type="password" class="form-control" id="loginPwd" placeholder="••••••••（首次登入將自動建立帳號）">
     </div>
-    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doLogin()">登入後台</button>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" id="loginEmailBtn" onclick="doEmailLogin()">登入 / 建立帳號</button>
     <div class="login-divider"><span>或使用第三方登入</span></div>
-    <button class="btn-google" onclick="doLogin()">
+    <button class="btn-google" id="loginGoogleBtn" onclick="doGoogleLogin()">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
       使用 Google 登入
     </button>
-    <button class="btn-apple" onclick="doLogin()">
+    <button class="btn-apple" onclick="doAppleLoginPlaceholder()">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-      使用 Apple 登入
+      使用 Apple 登入（即將推出，請先用 Email）
     </button>
   </div>
 </div>
@@ -1066,51 +1067,21 @@ select.form-control{cursor:pointer}
 // ── TicNote Date ──
 (function(){var d=document.getElementById('r-date');if(d)d.textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'})})();
 
-// ══════════════════════════════════════════
-// DATA STORE (localStorage)
-// ══════════════════════════════════════════
-const KEYS={products:'fgm_products',orders:'fgm_orders',customers:'fgm_customers',periods:'fgm_periods',categories:'fgm_categories',settings:'fgm_settings',compareLinks:'fgm_compare_links',currentPeriod:'fgm_current_period'};
-
-function load(k){try{return JSON.parse(localStorage.getItem(KEYS[k]))||[]}catch{return[]}}
-function loadObj(k){try{return JSON.parse(localStorage.getItem(KEYS[k]))||{}}catch{return{}}}
-function save(k,v){localStorage.setItem(KEYS[k],JSON.stringify(v))}
-
 let DB={
-  products:load('products'),
-  orders:load('orders'),
-  customers:load('customers'),
-  periods:load('periods'),
-  categories:load('categories'),
-  compareLinks:load('compareLinks'),
-  settings:loadObj('settings'),
-  currentPeriod:localStorage.getItem(KEYS.currentPeriod)||null
+  products:[],
+  orders:[],
+  customers:[],
+  periods:[],
+  categories:[],
+  compareLinks:[],
+  settings:{},
+  currentPeriod:null
 };
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
 // 暫存多品項陣列 (於新增訂單時使用)
 let tempOrderItems = [];
-
-// Default compare links
-if(!DB.compareLinks.length){
-  DB.compareLinks=[
-    {id:uid(),name:'Google購物',url:'https://www.google.com/search?tbm=shop&q='},
-    {id:uid(),name:'蝦皮',url:'https://shopee.tw/search?keyword='},
-    {id:uid(),name:'MOMO',url:'https://www.momoshop.com.tw/search/searchShop.jsp?keyword='},
-    {id:uid(),name:'飛比',url:'https://feebee.com.tw/search/?q='},
-    {id:uid(),name:'Yahoo購物',url:'https://tw.buy.yahoo.com/search/product?p='},
-    {id:uid(),name:'Amazon',url:'https://www.amazon.com/s?k='},
-    {id:uid(),name:'樂天',url:'https://search.rakuten.com.tw/search/mall/'},
-    {id:uid(),name:'Coupang',url:'https://www.coupang.com/np/search?q='},
-  ];
-  save('compareLinks',DB.compareLinks);
-}
-
-// Default categories
-if(!DB.categories.length){
-  DB.categories=[{id:uid(),name:'服裝'},{id:uid(),name:'保養品'},{id:uid(),name:'美食'},{id:uid(),name:'3C'},{id:uid(),name:'配件'}];
-  save('categories',DB.categories);
-}
 
 // ── Exchange rates (approximate) ──
 const RATES={TWD:1,JPY:0.22,KRW:0.024,USD:32.5,EUR:35.5,GBP:41.5,CNY:4.5,HKD:4.2,SGD:24.5,AUD:21.5,THB:0.96};
@@ -1160,28 +1131,39 @@ function checkClientRoute() {
   return false;
 }
 
-function renderCustomerPortal(orderId) {
-  const o = DB.orders.find(x => x.id === orderId);
+async function renderCustomerPortal(orderId) {
   const portal = document.getElementById('customerPortal');
   const login = document.getElementById('loginScreen');
   const app = document.getElementById('mainApp');
-  
-  if (!o) {
-    portal.innerHTML = `<div class="empty-state"><h3>查無此對帳訂單</h3><p>請重新向代購主確認連結。</p></div>`;
-    portal.style.display = 'block';
-    login.style.display = 'none';
-    app.style.display = 'none';
-    return;
-  }
 
   login.style.display = 'none';
   app.style.display = 'none';
   portal.style.display = 'block';
+  document.getElementById('portalBody').innerHTML = '<div class="empty-state"><p>載入中…</p></div>';
+
+  let o = null;
+  try {
+    const snap = await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb, 'publicOrders', orderId));
+    if (snap.exists()) o = snap.data();
+  } catch (e) {
+    console.error(e);
+  }
+
+  if (!o) {
+    portal.innerHTML = `<div class="empty-state"><h3>查無此對帳訂單</h3><p>請重新向代購主確認連結。</p></div>`;
+    return;
+  }
+
+  let store = {};
+  try {
+    const storeSnap = await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb, 'publicStoreInfo', o.ownerUid));
+    if (storeSnap.exists()) store = storeSnap.data();
+  } catch (e) {
+    console.error(e);
+  }
 
   const statusLabel = {pending:'已收到訂單（待處理）', shipping:'已出貨（配送中）', payment:'待核對付款狀態', done:'已結單（交易完成）'};
-  const store = DB.settings;
 
-  // 動態渲染客戶清單列表
   let itemsRowsHtml = '';
   if (o.items && o.items.length) {
     itemsRowsHtml = o.items.map(item => `
@@ -1241,22 +1223,255 @@ function renderCustomerPortal(orderId) {
 }
 
 // ══════════════════════════════════════════
-// AUTH
+// AUTH  (Firebase Authentication)
 // ══════════════════════════════════════════
-let loggedIn=localStorage.getItem('fgm_auth')==='1';
-function doLogin(){
-  localStorage.setItem('fgm_auth','1');
-  loggedIn=true;
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('mainApp').style.display='block';
-  document.getElementById('customerPortal').style.display='none';
+const ALLOWED_EMAILS = ['alex472t41841@gmail.com'];
+let fgmUnsubscribers = [];
+
+function showLoginError(msg){
+  const el=document.getElementById('loginStatusMsg');
+  el.textContent=msg;
+  el.style.display='block';
+}
+function clearLoginError(){
+  const el=document.getElementById('loginStatusMsg');
+  el.style.display='none';
+  el.textContent='';
+}
+function setLoginButtonsBusy(busy){
+  ['loginEmailBtn','loginGoogleBtn'].forEach(id=>{
+    const b=document.getElementById(id);
+    if(b) b.disabled=busy;
+  });
+}
+
+async function doGoogleLogin(){
+  clearLoginError();
+  setLoginButtonsBusy(true);
+  try{
+    await window.fgmAuthFns.signInWithPopup(window.fgmAuth, window.fgmGoogleProvider);
+  }catch(e){
+    console.error(e);
+    showLoginError('Google 登入失敗：'+(e.message||e.code||'未知錯誤'));
+  }finally{
+    setLoginButtonsBusy(false);
+  }
+}
+
+async function doEmailLogin(){
+  clearLoginError();
+  const email=document.getElementById('loginEmail').value.trim();
+  const pwd=document.getElementById('loginPwd').value;
+  if(!email||!pwd){ showLoginError('請輸入電子郵件與密碼'); return; }
+  setLoginButtonsBusy(true);
+  try{
+    try{
+      await window.fgmAuthFns.signInWithEmailAndPassword(window.fgmAuth, email, pwd);
+    }catch(err){
+      if(err.code==='auth/user-not-found' || err.code==='auth/invalid-credential'){
+        // 帳號不存在時，僅在白名單內才自動建立
+        if(!ALLOWED_EMAILS.includes(email)){
+          throw err;
+        }
+        await window.fgmAuthFns.createUserWithEmailAndPassword(window.fgmAuth, email, pwd);
+      } else {
+        throw err;
+      }
+    }
+  }catch(e){
+    console.error(e);
+    let msg='登入失敗：'+(e.message||e.code||'未知錯誤');
+    if(e.code==='auth/wrong-password') msg='密碼錯誤，請再試一次';
+    if(e.code==='auth/invalid-email') msg='電子郵件格式不正確';
+    if(e.code==='auth/weak-password') msg='密碼強度過弱，請至少 6 碼';
+    showLoginError(msg);
+  }finally{
+    setLoginButtonsBusy(false);
+  }
+}
+
+function doAppleLoginPlaceholder(){
+  showToast('Apple 登入尚未開通（需申請付費開發者帳號），請先使用 Email 登入');
+  clearLoginError();
+  document.getElementById('loginEmail').focus();
+}
+
+function doLogout(){
+  showConfirm('安全登出', '確定要登出代購後台管理系統嗎？', async (yes) => {
+    if (yes) {
+      detachAllListeners();
+      await window.fgmAuthFns.signOut(window.fgmAuth);
+    }
+  });
+}
+
+function detachAllListeners(){
+  fgmUnsubscribers.forEach(fn=>{try{fn()}catch(e){}});
+  fgmUnsubscribers=[];
+}
+
+// Firestore document keys mapped 1:1 with the old localStorage KEYS
+const KEYS={products:'products',orders:'orders',customers:'customers',periods:'periods',categories:'categories',settings:'settings',compareLinks:'compareLinks'};
+
+async function save(k,v){
+  DB[k]=v;
+  const user=window.fgmAuth.currentUser;
+  if(!user) return;
+  try{
+    await window.fgmFirestore.setDoc(
+      window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]||k),
+      {value:v}
+    );
+  }catch(e){
+    console.error('save failed',k,e);
+    showToast('資料同步失敗，請確認網路連線');
+  }
+
+  // 鏡像必要欄位到公開集合，讓客戶對帳連結可在未登入狀態下讀取
+  if(k==='orders'){
+    mirrorPublicOrders(v, user.uid);
+  }
+  if(k==='settings'){
+    mirrorPublicStoreInfo(v, user.uid);
+  }
+}
+
+async function mirrorPublicOrders(orders, ownerUid){
+  try{
+    for(const o of orders){
+      const publicFields={
+        ownerUid,
+        customerName:o.customerName||'',
+        items:o.items||[],
+        productName:o.productName||'',
+        specLabel:o.specLabel||'',
+        qty:o.qty||1,
+        total:o.total||0,
+        status:o.status||'pending',
+        discountAmt:o.discountAmt||0,
+        shippingFee:o.shippingFee||0,
+        logistics:o.logistics||'',
+        shippingAddr:o.shippingAddr||'',
+        trackingCode:o.trackingCode||'',
+        trackingCo:o.trackingCo||'',
+        payment:o.payment||'',
+        isPaid:!!o.isPaid,
+        isShipped:!!o.isShipped
+      };
+      await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'publicOrders',o.id), publicFields);
+    }
+  }catch(e){ console.error('mirrorPublicOrders failed', e); }
+}
+
+async function deletePublicOrder(orderId){
+  try{
+    await window.fgmFirestore.deleteDoc(window.fgmFirestore.doc(window.fgmDb,'publicOrders',orderId));
+  }catch(e){ console.error('deletePublicOrder failed', e); }
+}
+
+async function mirrorPublicStoreInfo(settings, ownerUid){
+  try{
+    await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'publicStoreInfo',ownerUid),{
+      bankName:settings.bankName||'',
+      bankAccount:settings.bankAccount||'',
+      bankHolder:settings.bankHolder||'',
+      bankNote:settings.bankNote||'',
+      storeShipName:settings.storeShipName||'',
+      storeShipPhone:settings.storeShipPhone||'',
+      logoData:settings.logoData||''
+    });
+  }catch(e){ console.error('mirrorPublicStoreInfo failed', e); }
+}
+
+async function loadAllDataAndInit(user){
+  showToast('正在從雲端同步資料…');
+  const keys=['products','orders','customers','periods','categories','compareLinks'];
+  try{
+    for(const k of keys){
+      const snap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]));
+      DB[k]=snap.exists()?(snap.data().value||[]):[];
+    }
+    const settingsSnap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','settings'));
+    DB.settings=settingsSnap.exists()?(settingsSnap.data().value||{}):{};
+    const periodSnap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','currentPeriod'));
+    DB.currentPeriod=periodSnap.exists()?(periodSnap.data().value||null):null;
+  }catch(e){
+    console.error(e);
+    showToast('雲端資料讀取失敗，請確認網路連線後重新整理');
+  }
+
+  // Defaults on first-ever login
+  if(!DB.compareLinks.length){
+    DB.compareLinks=[
+      {id:uid(),name:'Google購物',url:'https://www.google.com/search?tbm=shop&q='},
+      {id:uid(),name:'蝦皮',url:'https://shopee.tw/search?keyword='},
+      {id:uid(),name:'MOMO',url:'https://www.momoshop.com.tw/search/searchShop.jsp?keyword='},
+      {id:uid(),name:'飛比',url:'https://feebee.com.tw/search/?q='},
+      {id:uid(),name:'Yahoo購物',url:'https://tw.buy.yahoo.com/search/product?p='},
+      {id:uid(),name:'Amazon',url:'https://www.amazon.com/s?k='},
+      {id:uid(),name:'樂天',url:'https://search.rakuten.com.tw/search/mall/'},
+      {id:uid(),name:'Coupang',url:'https://www.coupang.com/np/search?q='},
+    ];
+    await save('compareLinks',DB.compareLinks);
+  }
+  if(!DB.categories.length){
+    DB.categories=[{id:uid(),name:'服裝'},{id:uid(),name:'保養品'},{id:uid(),name:'美食'},{id:uid(),name:'3C'},{id:uid(),name:'配件'}];
+    await save('categories',DB.categories);
+  }
+
+  attachRealtimeListeners(user);
   initApp();
 }
-function doLogout(){
-  showConfirm('安全登出', '確定要登出代購後台管理系統嗎？', (yes) => {
-    if (yes) {
-      localStorage.removeItem('fgm_auth');
-      location.reload();
+
+function attachRealtimeListeners(user){
+  detachAllListeners();
+  const keys=['products','orders','customers','periods','categories','compareLinks'];
+  keys.forEach(k=>{
+    const unsub=window.fgmFirestore.onSnapshot(
+      window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]),
+      (snap)=>{
+        if(!snap.exists())return;
+        DB[k]=snap.data().value||[];
+        refreshPage(currentPage);
+        if(currentPage!=='home') renderHome();
+        if(k==='categories') renderCategoryFilterChips();
+      },
+      (err)=>console.error('listener error',k,err)
+    );
+    fgmUnsubscribers.push(unsub);
+  });
+  const unsubSettings=window.fgmFirestore.onSnapshot(
+    window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','settings'),
+    (snap)=>{
+      if(!snap.exists())return;
+      DB.settings=snap.data().value||{};
+      if(currentPage==='settings') renderSettings();
+    },
+    (err)=>console.error('listener error settings',err)
+  );
+  fgmUnsubscribers.push(unsubSettings);
+}
+
+function initFirebaseAuthWatcher(){
+  window.fgmAuthFns.onAuthStateChanged(window.fgmAuth, async (user)=>{
+    if(window.location.hash.startsWith('#order/')) return; // 客戶對帳連結不受登入流程影響
+
+    if(user){
+      if(!ALLOWED_EMAILS.includes(user.email)){
+        showLoginError('此帳號（'+user.email+'）未被授權使用本系統，請聯絡管理者。');
+        detachAllListeners();
+        await window.fgmAuthFns.signOut(window.fgmAuth);
+        return;
+      }
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('mainApp').style.display='block';
+      document.getElementById('customerPortal').style.display='none';
+      await loadAllDataAndInit(user);
+    } else {
+      detachAllListeners();
+      document.getElementById('mainApp').style.display='none';
+      document.getElementById('customerPortal').style.display='none';
+      document.getElementById('loginScreen').style.display='flex';
     }
   });
 }
@@ -1264,19 +1479,19 @@ function doLogout(){
 // ── 啟動初始化與路由偵測 ──
 window.onload = function() {
   if (!checkClientRoute()) {
-    if(loggedIn){
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('mainApp').style.display='block';
-      initApp();
-    }
+    initFirebaseAuthWatcher();
   }
 }
 
 // 監聽網址變化（如重新貼上對帳網址）
 window.onhashchange = function() {
-  if (!checkClientRoute() && loggedIn) {
+  if (!checkClientRoute()) {
     document.getElementById('customerPortal').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+    if(window.fgmAuth.currentUser){
+      document.getElementById('mainApp').style.display = 'block';
+    } else {
+      document.getElementById('loginScreen').style.display = 'flex';
+    }
   }
 }
 
@@ -1770,7 +1985,7 @@ function copyAIText(){
   });
 }
 
-function saveProduct(){
+async function saveProduct(){
   const name=document.getElementById('p-name').value.trim();
   if(!name){showToast('請輸入商品名稱');return;}
   
@@ -1818,7 +2033,7 @@ function saveProduct(){
     showToast('商品新增成功！');
   }
 
-  save('products',DB.products);
+  await save('products',DB.products);
   closeModal('modalAddProduct');
   renderProducts();
   renderCategoryFilterChips();
@@ -1904,7 +2119,7 @@ function openEditProduct(id) {
   openModal('modalAddProduct');
 }
 
-function saveProductDetail(){
+async function saveProductDetail(){
   const id=document.getElementById('prodDetailData').dataset.id;
   const p=DB.products.find(x=>x.id===id);
   if(!p)return;
@@ -1917,17 +2132,17 @@ function saveProductDetail(){
   p.currency=document.getElementById('pd-currency').value;
   p.margin=parseFloat(document.getElementById('pd-margin').value)||0;
   p.price=parseFloat(document.getElementById('pd-price').value)||0;
-  save('products',DB.products);
+  await save('products',DB.products);
   closeModal('modalProductDetail');
   renderProducts();
   showToast('商品詳情已儲存');
 }
 
 function deleteProduct(id){
-  showConfirm('刪除商品', '確定刪除此商品嗎？相關商品資料將會被永久移除。', (yes) => {
+  showConfirm('刪除商品', '確定刪除此商品嗎？相關商品資料將會被永久移除。', async (yes) => {
     if (yes) {
       DB.products=DB.products.filter(p=>p.id!==id);
-      save('products',DB.products);
+      await save('products',DB.products);
       closeModal('modalProductDetail');
       renderProducts();
       showToast('商品已刪除');
@@ -2140,7 +2355,7 @@ function calcOrderTotal(){
   document.getElementById('o-total').textContent='NT$ '+Math.max(0,Math.round(total)).toLocaleString();
 }
 
-function saveOrder(){
+async function saveOrder(){
   const custId=document.getElementById('o-customer').value;
   if(!custId){showToast('請選擇客戶');return;}
   if(!tempOrderItems.length){showToast('明細清單中尚未加入任何商品品項');return;}
@@ -2183,7 +2398,7 @@ function saveOrder(){
   };
   
   DB.orders.push(order);
-  save('orders',DB.orders);
+  await save('orders',DB.orders);
   
   tempOrderItems = []; // 清空暫存
   closeModal('modalAddOrder');
@@ -2380,7 +2595,7 @@ function advanceOrderStatus(id){
   if(idx<flow.length-1){o.status=flow[idx+1];save('orders',DB.orders);renderOrders(o.status);renderHome();renderPurchase();closeModal('modalOrderDetail');showToast('進度已推進');}
 }
 
-function saveOrderDetail(){
+async function saveOrderDetail(){
   const o=DB.orders.find(x=>x.id===editingOrderId);
   if(!o)return;
   
@@ -2406,7 +2621,7 @@ function saveOrderDetail(){
     o.isPaid = true;
   }
   
-  save('orders',DB.orders);
+  await save('orders',DB.orders);
   closeModal('modalOrderDetail');
   renderOrders(currentOrderTab);
   renderHome();
@@ -2415,10 +2630,11 @@ function saveOrderDetail(){
 }
 
 function deleteOrder(id){
-  showConfirm('刪除訂單', '確定刪除此訂單嗎？相關交易記錄將會被永久移除。', (yes) => {
+  showConfirm('刪除訂單', '確定刪除此訂單嗎？相關交易記錄將會被永久移除。', async (yes) => {
     if (yes) {
       DB.orders=DB.orders.filter(o=>o.id!==id);
-      save('orders',DB.orders);
+      await save('orders',DB.orders);
+      await deletePublicOrder(id);
       closeModal('modalOrderDetail');
       renderOrders(currentOrderTab);
       renderHome();
@@ -2428,7 +2644,7 @@ function deleteOrder(id){
   });
 }
 
-function toggleOrderShipStatus(id) {
+async function toggleOrderShipStatus(id) {
   const o = DB.orders.find(x => x.id === id);
   if (!o) return;
   o.isShipped = !o.isShipped;
@@ -2443,7 +2659,7 @@ function toggleOrderShipStatus(id) {
       o.status = 'pending'; // 雙重待處理
     }
   }
-  save('orders', DB.orders);
+  await save('orders', DB.orders);
   openOrderDetail(id);
   renderOrders(currentOrderTab);
   renderHome();
@@ -2451,7 +2667,7 @@ function toggleOrderShipStatus(id) {
   showToast(`出貨狀態已變更為：${o.isShipped ? '已出貨' : '未出貨'}`);
 }
 
-function toggleOrderPayStatus(id) {
+async function toggleOrderPayStatus(id) {
   const o = DB.orders.find(x => x.id === id);
   if (!o) return;
   o.isPaid = !o.isPaid;
@@ -2466,7 +2682,7 @@ function toggleOrderPayStatus(id) {
       o.status = 'pending';
     }
   }
-  save('orders', DB.orders);
+  await save('orders', DB.orders);
   openOrderDetail(id);
   renderOrders(currentOrderTab);
   renderHome();
@@ -2474,12 +2690,12 @@ function toggleOrderPayStatus(id) {
   showToast(`付款狀態已變更為：${o.isPaid ? '已付款' : '未付款'}`);
 }
 
-function completeOrder(id) {
+async function completeOrder(id) {
   const o = DB.orders.find(x => x.id === id);
   if (!o) return;
   if (o.isShipped && o.isPaid) {
     o.status = 'done';
-    save('orders', DB.orders);
+    await save('orders', DB.orders);
     closeModal('modalOrderDetail');
     renderOrders(currentOrderTab);
     renderHome();
@@ -2844,7 +3060,7 @@ function toggleProcCheck(id, el){
   setProcStatus(id, isChecked ? 'bought' : 'pending');
 }
 
-function setProcStatus(id, val){
+async function setProcStatus(id, val){
   const orders = DB.orders;
   orders.forEach(o => {
     if (o.items && o.items.length) {
@@ -2879,7 +3095,7 @@ function setProcStatus(id, val){
       }
     }
   });
-  save('orders', DB.orders);
+  await save('orders', DB.orders);
   renderPurchase();
   renderHome();
 }
@@ -2966,9 +3182,9 @@ function renderSettings(){
   }
 }
 
-function saveSetting(key,val){DB.settings[key]=val;save('settings',DB.settings);}
+async function saveSetting(key,val){DB.settings[key]=val;await save('settings',DB.settings);}
 
-function saveAllSettings(){
+async function saveAllSettings(){
   DB.settings.storeShipName=document.getElementById('storeShipName').value;
   DB.settings.storeShipPhone=document.getElementById('storeShipPhone').value;
   DB.settings.storeShipEmail=document.getElementById('storeShipEmail').value;
@@ -2978,16 +3194,16 @@ function saveAllSettings(){
   DB.settings.bankNote=document.getElementById('bankNote').value;
   DB.settings.defaultCurrency=document.getElementById('defaultCurrency').value;
   DB.settings.exchangeRate=parseFloat(document.getElementById('exchangeRate').value)||1;
-  save('settings',DB.settings);
+  await save('settings',DB.settings);
   showToast('設定已儲存！');
 }
 
 function uploadLogo(input){
   if(input.files&&input.files[0]){
     const reader=new FileReader();
-    reader.onload=function(e){
+    reader.onload=async function(e){
       DB.settings.logoData=e.target.result;
-      save('settings',DB.settings);
+      await save('settings',DB.settings);
       const img=document.createElement('img');img.src=e.target.result;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';
       document.getElementById('logoDisplay').innerHTML='';document.getElementById('logoDisplay').appendChild(img);
     };
@@ -2997,30 +3213,36 @@ function uploadLogo(input){
 
 // Periods
 function openAddPeriod(){closeModal('fabMenu');openModal('modalAddPeriod');}
-function savePeriod(){
+async function savePeriod(){
   const name=document.getElementById('per-name').value.trim();
   if(!name){showToast('請輸入檔期名稱');return;}
   const period={id:uid(),name,start:document.getElementById('per-start').value,end:document.getElementById('per-end').value,desc:document.getElementById('per-desc').value,createdAt:new Date().toISOString()};
   DB.periods.push(period);
-  save('periods',DB.periods);
+  await save('periods',DB.periods);
   // Auto-select if first
-  if(DB.periods.length===1){DB.currentPeriod=period.id;localStorage.setItem(KEYS.currentPeriod,period.id);}
+  if(DB.periods.length===1){await selectPeriod(period.id);}
   closeModal('modalAddPeriod');
   renderSettings();
   renderHome();
   showToast('檔期新增成功');
 }
-function selectPeriod(id){
-  DB.currentPeriod=id;localStorage.setItem(KEYS.currentPeriod,id);
+async function selectPeriod(id){
+  DB.currentPeriod=id;
+  const user=window.fgmAuth.currentUser;
+  if(user){
+    try{
+      await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','currentPeriod'),{value:id});
+    }catch(e){console.error(e);}
+  }
   renderSettings();renderHome();renderProducts();renderOrders(currentOrderTab);renderPurchase();
   showToast('已切換專案檔期');
 }
 function deletePeriod(id){
-  showConfirm('刪除檔期', '確定刪除此檔期嗎？相關商品與訂單資料不會一併被刪除。', (yes) => {
+  showConfirm('刪除檔期', '確定刪除此檔期嗎？相關商品與訂單資料不會一併被刪除。', async (yes) => {
     if (yes) {
       DB.periods=DB.periods.filter(p=>p.id!==id);
-      save('periods',DB.periods);
-      if(DB.currentPeriod===id){DB.currentPeriod=DB.periods[0]?DB.periods[0].id:null;localStorage.setItem(KEYS.currentPeriod,DB.currentPeriod||'');}
+      await save('periods',DB.periods);
+      if(DB.currentPeriod===id){await selectPeriod(DB.periods[0]?DB.periods[0].id:null);}
       renderSettings();renderHome();
       showToast('檔期已刪除');
     }
@@ -3029,11 +3251,11 @@ function deletePeriod(id){
 
 // Categories
 function openAddCategory(){openModal('modalAddCategory');}
-function saveCategory(){
+async function saveCategory(){
   const name=document.getElementById('cat-name').value.trim();
   if(!name)return;
   DB.categories.push({id:uid(),name});
-  save('categories',DB.categories);
+  await save('categories',DB.categories);
   document.getElementById('cat-name').value='';
   closeModal('modalAddCategory');
   renderSettings();renderCategoryFilterChips();
@@ -3043,13 +3265,13 @@ function renameCategory(id){
   const cat=DB.categories.find(c=>c.id===id);
   if(!cat)return;
   const name=prompt('新名稱：',cat.name);
-  if(name&&name.trim()){cat.name=name.trim();save('categories',DB.categories);renderSettings();renderCategoryFilterChips();showToast('分類改名成功');}
+  if(name&&name.trim()){cat.name=name.trim();save('categories',DB.categories).then(()=>{renderSettings();renderCategoryFilterChips();showToast('分類改名成功');});}
 }
 function deleteCategory(id){
-  showConfirm('刪除分類', '確定要刪除此商品分類嗎？', (yes) => {
+  showConfirm('刪除分類', '確定要刪除此商品分類嗎？', async (yes) => {
     if (yes) {
       DB.categories=DB.categories.filter(c=>c.id!==id);
-      save('categories',DB.categories);
+      await save('categories',DB.categories);
       renderSettings();renderCategoryFilterChips();
       showToast('分類已刪除');
     }
@@ -3058,21 +3280,21 @@ function deleteCategory(id){
 
 // Customers
 function openAddCustomer(){closeModal('fabMenu');openModal('modalAddCustomer');}
-function saveCustomer(){
+async function saveCustomer(){
   const name=document.getElementById('cust-name').value.trim();
   if(!name){showToast('請輸入客戶姓名');return;}
   DB.customers.push({id:uid(),name,lineId:document.getElementById('cust-line').value,phone:document.getElementById('cust-phone').value,email:document.getElementById('cust-email').value,addr:document.getElementById('cust-addr').value,createdAt:new Date().toISOString()});
-  save('customers',DB.customers);
+  await save('customers',DB.customers);
   ['cust-name','cust-line','cust-phone','cust-email','cust-addr'].forEach(id=>document.getElementById(id).value='');
   closeModal('modalAddCustomer');
   renderSettings();
   showToast('客戶資料已新增');
 }
 function deleteCustomer(id){
-  showConfirm('刪除客戶', '確定刪除此客戶嗎？此動作無法復原。', (yes) => {
+  showConfirm('刪除客戶', '確定刪除此客戶嗎？此動作無法復原。', async (yes) => {
     if (yes) {
       DB.customers=DB.customers.filter(c=>c.id!==id);
-      save('customers',DB.customers);
+      await save('customers',DB.customers);
       renderSettings();
       showToast('客戶已刪除');
     }
@@ -3081,20 +3303,20 @@ function deleteCustomer(id){
 
 // Compare Links
 function openAddCompareLink(){openModal('modalAddCompareLink');}
-function saveCompareLink(){
+async function saveCompareLink(){
   const name=document.getElementById('cl-name').value.trim();
   const url=document.getElementById('cl-url').value.trim();
   if(!name||!url){showToast('請填入平台名稱與搜尋網址');return;}
   DB.compareLinks.push({id:uid(),name,url});
-  save('compareLinks',DB.compareLinks);
+  await save('compareLinks',DB.compareLinks);
   document.getElementById('cl-name').value='';document.getElementById('cl-url').value='';
   closeModal('modalAddCompareLink');
   renderSettings();
   showToast('比價平台已新增');
 }
-function deleteCompareLink(id){
+async function deleteCompareLink(id){
   DB.compareLinks=DB.compareLinks.filter(l=>l.id!==id);
-  save('compareLinks',DB.compareLinks);
+  await save('compareLinks',DB.compareLinks);
   renderSettings();
   showToast('比價平台已刪除');
 }
@@ -3117,6 +3339,52 @@ function toggleDetailOrderPaymentFields() {
     bankFields.style.display = pVal === '銀行轉帳' ? 'block' : 'none';
   }
 }
+</script>
+
+<!-- ════ FIREBASE (真實授權 + 雲端持久化資料同步) ════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup,
+    signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBbg2QjrHJU3TAiWdZ-EQ1HiBJFaZlGRoY",
+    authDomain: "fairy-godmother-project.firebaseapp.com",
+    projectId: "fairy-godmother-project",
+    storageBucket: "fairy-godmother-project.firebasestorage.app",
+    messagingSenderId: "447100321079",
+    appId: "1:447100321079:web:7399c1a9125fd0cdfe6eb2",
+    measurementId: "G-BBPJ9R8JJP"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  // 將 Firebase 實例與函式掛到 window，供外層 classic <script> 使用
+  window.fgmAuth = auth;
+  window.fgmDb = db;
+  window.fgmGoogleProvider = googleProvider;
+  window.fgmAuthFns = { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut };
+  window.fgmFirestore = { doc, getDoc, setDoc, deleteDoc, onSnapshot };
+
+  // 通知外層腳本 Firebase 已就緒
+  window.dispatchEvent(new Event('fgm-firebase-ready'));
+</script>
+<script>
+  // 確保只有在 Firebase 模組載入完成後才開始監聽登入狀態 / 路由
+  window.addEventListener('fgm-firebase-ready', function(){
+    if (!checkClientRoute()) {
+      initFirebaseAuthWatcher();
+    }
+  });
 </script>
 </body>
 </html>
