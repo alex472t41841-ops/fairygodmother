@@ -3348,7 +3348,7 @@ function toggleDetailOrderPaymentFields() {
     onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot
+    initializeFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -3363,7 +3363,10 @@ function toggleDetailOrderPaymentFields() {
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  // 使用自動偵測長輪詢（long polling）模式：
+  // 部分廣告攔截外掛、公司網路或防火牆會擋掉 Firestore 預設的即時串流連線，
+  // 導致明明有網路卻收到 "client is offline" 錯誤。這個設定會自動改用相容性較好的連線方式。
+  const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   const googleProvider = new GoogleAuthProvider();
 
   // 將 Firebase 實例與函式掛到 window，供外層 classic <script> 使用
