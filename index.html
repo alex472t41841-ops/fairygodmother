@@ -158,6 +158,28 @@ select.form-control{cursor:pointer}
 .proc-check.checked svg{stroke:#fff}
 .proc-check svg{width:14px;height:14px;stroke:transparent;fill:none;stroke-width:2.5}
 
+/* Purchase summary + qty-based procurement rows */
+.proc-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.proc-summary-cell{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
+.proc-summary-num{font-family:'SF Mono','Fira Code',monospace;font-size:20px;font-weight:800;color:var(--text-primary)}
+.proc-summary-label{font-size:11px;color:var(--text-muted);margin-top:2px}
+.proc-summary-bought .proc-summary-num{color:var(--green)}
+.proc-summary-pending .proc-summary-num{color:var(--amber)}
+.proc-summary-oos .proc-summary-num{color:var(--red)}
+.proc-row2{padding:10px 0;border-bottom:1px solid #f1f5f9}
+.proc-row2:last-child{border-bottom:none}
+.proc-row2-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.proc-row2-controls{display:flex;align-items:flex-end;gap:10px;margin-top:8px;padding-left:54px;flex-wrap:wrap}
+.proc-qty-field{display:flex;flex-direction:column;gap:3px}
+.proc-qty-field label{font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.proc-qty-field input{width:56px;border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;text-align:center}
+.proc-remaining-val{width:56px;text-align:center;font-family:'SF Mono','Fira Code',monospace;font-size:13px;font-weight:700;color:var(--amber);padding:5px 0}
+.proc-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;margin-left:auto}
+.proc-badge-done{background:var(--green-bg);color:var(--green)}
+.proc-badge-pending{background:var(--amber-light);color:var(--amber)}
+.proc-badge-oos{background:var(--red-bg);color:var(--red)}
+.proc-badge-mixed{background:var(--blue-bg);color:var(--blue)}
+
 .pl-table{width:100%;border-collapse:collapse;font-size:13px}
 .pl-table td{padding:8px 4px;border-bottom:1px solid var(--border)}
 .pl-table td:last-child{text-align:right;font-family:'SF Mono','Fira Code',monospace;font-weight:600}
@@ -426,6 +448,15 @@ select.form-control{cursor:pointer}
       <button class="tab-btn" onclick="switchOrderTab('payment',this)">待付款</button>
       <button class="tab-btn" onclick="switchOrderTab('done',this)">已結單</button>
     </div>
+    <div style="display:flex;gap:8px;margin:10px 0 12px;align-items:center">
+      <select class="form-control" id="orderFilterCustomer" style="flex:1;font-size:13px;padding:8px 10px" onchange="applyOrderFilters()">
+        <option value="">全部客戶</option>
+      </select>
+      <select class="form-control" id="orderFilterProduct" style="flex:1;font-size:13px;padding:8px 10px" onchange="applyOrderFilters()">
+        <option value="">全部商品</option>
+      </select>
+      <button class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="clearOrderFilters()">清除</button>
+    </div>
     <div id="ordersList">
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -436,6 +467,12 @@ select.form-control{cursor:pointer}
 
   <!-- ─── PAGE 4: 採購 ─── -->
   <div class="page" id="page-purchase">
+    <div id="purchaseSummary" class="proc-summary-grid" style="display:none">
+      <div class="proc-summary-cell"><div class="proc-summary-num" id="sumTotalNeed">0</div><div class="proc-summary-label">應採購</div></div>
+      <div class="proc-summary-cell proc-summary-bought"><div class="proc-summary-num" id="sumBought">0</div><div class="proc-summary-label">已買到</div></div>
+      <div class="proc-summary-cell proc-summary-pending"><div class="proc-summary-num" id="sumRemaining">0</div><div class="proc-summary-label">未買到</div></div>
+      <div class="proc-summary-cell proc-summary-oos"><div class="proc-summary-num" id="sumOOS">0</div><div class="proc-summary-label">斷貨</div></div>
+    </div>
     <div class="card">
       <div class="card-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
@@ -654,6 +691,10 @@ select.form-control{cursor:pointer}
     <div id="ptab-basic" class="ptab active">
       <div class="form-group"><label>商品名稱 *</label><input type="text" class="form-control" id="p-name" placeholder="商品名稱"></div>
       <div class="form-group"><label>商品描述 / 核心賣點</label><textarea class="form-control" id="p-desc" rows="3" placeholder="描述商品特色…" style="resize:vertical"></textarea></div>
+      <div class="form-group">
+        <label>採購來源連結 <span style="font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0">（批貨時一鍵開啟賣場頁面）</span></label>
+        <input type="url" class="form-control" id="p-source-url" placeholder="貼上商品賣場網址，例如 https://...">
+      </div>
       <div class="form-row">
         <div class="form-group"><label>商品分類</label>
           <select class="form-control" id="p-category"><option value="">選擇分類</option></select>
@@ -1297,11 +1338,34 @@ function detachAllListeners(){
 
 // Firestore document keys mapped 1:1 with the old localStorage KEYS
 const KEYS={products:'products',orders:'orders',customers:'customers',periods:'periods',categories:'categories',settings:'settings',compareLinks:'compareLinks',procurement:'procurement'};
+// orders/products 資料量會隨營運持續成長（含商品圖片），過去整包陣列存成單一 Firestore 文件
+// 容易撞到 1MB 文件大小上限，也會讓不同筆資料的編輯互相覆蓋。這兩個資料表改採「子集合」架構，
+// 每一筆訂單/商品各自是一份獨立文件（users/{uid}/orders/{orderId}、users/{uid}/products/{productId}）。
+const SUBCOLLECTION_KEYS=['orders','products'];
+// 記錄「目前已同步到 Firestore 的內容」快照（id -> JSON 字串），儲存時用來比對，只寫入真正有變動的文件、
+// 並刪除已被移除的項目，而不是每次都整批覆寫全部資料。
+let syncedSnapshots={orders:{},products:{}};
+// 對應 publicOrders（供客戶對帳連結使用）的同步快照，同樣改成差異比對，避免每次存訂單就整批重寫。
+let syncedPublicOrders={};
 
 async function save(k,v){
   DB[k]=v;
   const user=window.fgmAuth.currentUser;
   if(!user) return;
+
+  if(SUBCOLLECTION_KEYS.includes(k)){
+    try{
+      await syncSubcollection(k,v,user.uid);
+    }catch(e){
+      console.error('save failed',k,e);
+      showToast('資料同步失敗，請確認網路連線');
+    }
+    if(k==='orders'){
+      mirrorPublicOrders(v, user.uid);
+    }
+    return;
+  }
+
   try{
     await window.fgmFirestore.setDoc(
       window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]||k),
@@ -1312,38 +1376,74 @@ async function save(k,v){
     showToast('資料同步失敗，請確認網路連線');
   }
 
-  // 鏡像必要欄位到公開集合，讓客戶對帳連結可在未登入狀態下讀取
-  if(k==='orders'){
-    mirrorPublicOrders(v, user.uid);
-  }
   if(k==='settings'){
     mirrorPublicStoreInfo(v, user.uid);
   }
 }
 
+// 將陣列差異同步到 Firestore 子集合：跟上次同步快照比對，內容沒變的項目完全不會送出寫入請求，
+// 已從陣列中移除的項目會被刪除，其餘不受影響的文件維持原樣（不會整批覆寫）。
+async function syncSubcollection(key, arr, uid){
+  const synced=syncedSnapshots[key];
+  const currentIds=new Set();
+  for(const item of arr){
+    if(!item||!item.id)continue;
+    currentIds.add(item.id);
+    const json=JSON.stringify(item);
+    if(synced[item.id]!==json){
+      await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'users',uid,key,item.id), item);
+      synced[item.id]=json;
+    }
+  }
+  for(const existingId of Object.keys(synced)){
+    if(!currentIds.has(existingId)){
+      await window.fgmFirestore.deleteDoc(window.fgmFirestore.doc(window.fgmDb,'users',uid,key,existingId));
+      delete synced[existingId];
+    }
+  }
+}
+
+// 產出「對帳連結」用的公開訂單欄位（只保留客戶對帳需要的資訊，不含成本等內部資料）
+function buildPublicOrderFields(o, ownerUid){
+  return {
+    ownerUid,
+    customerName:o.customerName||'',
+    items:o.items||[],
+    productName:o.productName||'',
+    specLabel:o.specLabel||'',
+    qty:o.qty||1,
+    total:o.total||0,
+    status:o.status||'pending',
+    discountAmt:o.discountAmt||0,
+    shippingFee:o.shippingFee||0,
+    logistics:o.logistics||'',
+    shippingAddr:o.shippingAddr||'',
+    trackingCode:o.trackingCode||'',
+    trackingCo:o.trackingCo||'',
+    payment:o.payment||'',
+    isPaid:!!o.isPaid,
+    isShipped:!!o.isShipped
+  };
+}
+
 async function mirrorPublicOrders(orders, ownerUid){
   try{
+    const currentIds=new Set();
     for(const o of orders){
-      const publicFields={
-        ownerUid,
-        customerName:o.customerName||'',
-        items:o.items||[],
-        productName:o.productName||'',
-        specLabel:o.specLabel||'',
-        qty:o.qty||1,
-        total:o.total||0,
-        status:o.status||'pending',
-        discountAmt:o.discountAmt||0,
-        shippingFee:o.shippingFee||0,
-        logistics:o.logistics||'',
-        shippingAddr:o.shippingAddr||'',
-        trackingCode:o.trackingCode||'',
-        trackingCo:o.trackingCo||'',
-        payment:o.payment||'',
-        isPaid:!!o.isPaid,
-        isShipped:!!o.isShipped
-      };
-      await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'publicOrders',o.id), publicFields);
+      if(!o||!o.id)continue;
+      currentIds.add(o.id);
+      const publicFields=buildPublicOrderFields(o, ownerUid);
+      const json=JSON.stringify(publicFields);
+      if(syncedPublicOrders[o.id]!==json){
+        await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'publicOrders',o.id), publicFields);
+        syncedPublicOrders[o.id]=json;
+      }
+    }
+    for(const existingId of Object.keys(syncedPublicOrders)){
+      if(!currentIds.has(existingId)){
+        await deletePublicOrder(existingId);
+        delete syncedPublicOrders[existingId];
+      }
     }
   }catch(e){ console.error('mirrorPublicOrders failed', e); }
 }
@@ -1370,12 +1470,22 @@ async function mirrorPublicStoreInfo(settings, ownerUid){
 
 async function loadAllDataAndInit(user){
   showToast('正在從雲端同步資料…');
-  const keys=['products','orders','customers','periods','categories','compareLinks'];
+  const keys=['customers','periods','categories','compareLinks'];
   try{
     for(const k of keys){
       const snap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]));
       DB[k]=snap.exists()?(snap.data().value||[]):[];
     }
+    // orders/products 走子集合架構，讀取邏輯較特別（含首次自動搬移舊資料），獨立成一個函式處理
+    await loadSubcollection('orders', user.uid);
+    await loadSubcollection('products', user.uid);
+    // 假設上次登入時 publicOrders 已經跟目前資料同步，直接預填比對快照，
+    // 避免每次重新整理頁面後，第一次編輯訂單就得整批重寫 publicOrders（否則差異比對形同虛設）
+    syncedPublicOrders={};
+    DB.orders.forEach(o=>{
+      if(!o||!o.id)return;
+      syncedPublicOrders[o.id]=JSON.stringify(buildPublicOrderFields(o, user.uid));
+    });
     const settingsSnap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','settings'));
     DB.settings=settingsSnap.exists()?(settingsSnap.data().value||{}):{};
     const procSnap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data','procurement'));
@@ -1410,9 +1520,34 @@ async function loadAllDataAndInit(user){
   initApp();
 }
 
+// 讀取 orders/products 子集合，並在偵測到「子集合是空的、但舊版整包陣列文件裡有資料」時，
+// 自動把舊資料逐筆搬進子集合（只搬一次）。搬移進度記錄在 users/{uid}/data/_migration，
+// 就算搬到一半斷線，下次登入也會從沒搬完的地方繼續，不會漏資料或重複搬移。
+// 注意：舊的整包陣列文件搬移後不會刪除，會保留當作備份。
+async function loadSubcollection(key, uid){
+  const migRef=window.fgmFirestore.doc(window.fgmDb,'users',uid,'data','_migration');
+  const migSnap=await window.fgmFirestore.getDoc(migRef);
+  const mig=migSnap.exists()?(migSnap.data()||{}):{};
+  if(!mig[key+'Migrated']){
+    const legacySnap=await window.fgmFirestore.getDoc(window.fgmFirestore.doc(window.fgmDb,'users',uid,'data',key));
+    const legacyArr=legacySnap.exists()?(legacySnap.data().value||[]):[];
+    for(const item of legacyArr){
+      if(!item||!item.id)continue;
+      await window.fgmFirestore.setDoc(window.fgmFirestore.doc(window.fgmDb,'users',uid,key,item.id), item);
+    }
+    await window.fgmFirestore.setDoc(migRef,{[key+'Migrated']:true},{merge:true});
+  }
+  const colSnap=await window.fgmFirestore.getDocs(window.fgmFirestore.collection(window.fgmDb,'users',uid,key));
+  const arr=colSnap.docs.map(d=>d.data());
+  arr.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0)); // 子集合讀出的順序不保證，改用建立時間排序，維持跟原本陣列一致的顯示順序
+  DB[key]=arr;
+  syncedSnapshots[key]={};
+  arr.forEach(item=>{ syncedSnapshots[key][item.id]=JSON.stringify(item); });
+}
+
 function attachRealtimeListeners(user){
   detachAllListeners();
-  const keys=['products','orders','customers','periods','categories','compareLinks'];
+  const keys=['customers','periods','categories','compareLinks'];
   keys.forEach(k=>{
     const unsub=window.fgmFirestore.onSnapshot(
       window.fgmFirestore.doc(window.fgmDb,'users',user.uid,'data',KEYS[k]),
@@ -1422,6 +1557,23 @@ function attachRealtimeListeners(user){
         refreshPage(currentPage);
         if(currentPage!=='home') renderHome();
         if(k==='categories') renderCategoryFilterChips();
+      },
+      (err)=>console.error('listener error',k,err)
+    );
+    fgmUnsubscribers.push(unsub);
+  });
+  // orders/products 改為監聽整個子集合，任何一筆文件新增/修改/刪除都會觸發，即時性跟原本單一文件版本相同
+  SUBCOLLECTION_KEYS.forEach(k=>{
+    const unsub=window.fgmFirestore.onSnapshot(
+      window.fgmFirestore.collection(window.fgmDb,'users',user.uid,k),
+      (colSnap)=>{
+        const arr=colSnap.docs.map(d=>d.data());
+        arr.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+        DB[k]=arr;
+        syncedSnapshots[k]={};
+        arr.forEach(item=>{ syncedSnapshots[k][item.id]=JSON.stringify(item); });
+        refreshPage(currentPage);
+        if(currentPage!=='home') renderHome();
       },
       (err)=>console.error('listener error',k,err)
     );
@@ -1643,27 +1795,36 @@ function renderHome(){
 function renderProcInfoHome(){
   const orders=getPeriodOrders().filter(o=>o.status!=='done');
   const qtyMap={};
+  function remainingFor(key,totalQty){
+    const st=DB.procurement[key]||{};
+    let boughtQty,outOfStockQty;
+    if(typeof st.boughtQty==='number' || typeof st.outOfStockQty==='number'){
+      boughtQty=st.boughtQty||0; outOfStockQty=st.outOfStockQty||0;
+    } else {
+      boughtQty=st.bought?totalQty:0; outOfStockQty=st.outOfStock?totalQty:0;
+    }
+    return Math.max(0,totalQty-boughtQty-outOfStockQty);
+  }
   orders.forEach(o=>{
     if (o.items && o.items.length) {
       o.items.forEach(item => {
         const key=item.productId+'_'+(item.specLabel||'');
-        if(DB.procurement[key] && DB.procurement[key].outOfStock) return; // 此品項已標記斷貨，排除在採購需求外
         const label=item.productName+(item.specLabel?(' '+item.specLabel):'');
         if(!qtyMap[key])qtyMap[key]={label,qty:0};
         qtyMap[key].qty+=(item.qty||1);
       });
     } else {
       const key=o.productId+'_'+(o.specLabel||'');
-      if(DB.procurement[key] && DB.procurement[key].outOfStock) return;
       const label=o.productName+(o.specLabel?(' '+o.specLabel):'');
       if(!qtyMap[key])qtyMap[key]={label,qty:0};
       qtyMap[key].qty+=(o.qty||1);
     }
   });
+  // 只顯示「尚未採購完成」的品項，並顯示實際還缺幾件，而非固定顯示總需求量
   const el=document.getElementById('procInfoHome');
-  const items=Object.values(qtyMap);
+  const items=Object.entries(qtyMap).map(([key,v])=>({...v,remaining:remainingFor(key,v.qty)})).filter(i=>i.remaining>0);
   if(items.length){
-    el.innerHTML=items.map(({label,qty})=>`<div class="proc-row"><div class="proc-qty-box">×${qty}</div><div class="list-info"><div class="list-name">${label}</div></div></div>`).join('');
+    el.innerHTML=items.map(({label,remaining})=>`<div class="proc-row"><div class="proc-qty-box">×${remaining}</div><div class="list-info"><div class="list-name">${label}</div></div></div>`).join('');
   } else {
     el.innerHTML='<div class="empty-state" style="padding:20px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg><p>尚無訂單資料</p></div>';
   }
@@ -1728,7 +1889,7 @@ function openAddProduct(){
   document.querySelector('#modalAddProduct .modal-title').childNodes[0].textContent = '新增商品 ';
   
   // Reset form inputs
-  ['p-name','p-desc','p-deadline-time','p-cost','p-margin','p-extra','p-price','p-keyword'].forEach(id=>{
+  ['p-name','p-desc','p-source-url','p-deadline-time','p-cost','p-margin','p-extra','p-price','p-keyword'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.value=id==='p-deadline-time'?'23:59':'';
   });
@@ -2074,6 +2235,7 @@ async function saveProduct(){
   // Preserve existing base64 image or keep current source
   const imgEl = document.getElementById('p-photo-img');
   const photo= (imgEl && imgEl.src && imgEl.src.startsWith('data:')) ? imgEl.src : ((imgEl && imgEl.src) ? imgEl.src : '');
+  const sourceUrl = document.getElementById('p-source-url').value.trim();
   
   const specs=getSpecsFromForm();
   const cur=document.getElementById('p-currency').value;
@@ -2088,7 +2250,7 @@ async function saveProduct(){
   const extra=parseFloat(document.getElementById('p-extra').value)||0;
 
   const productData = {
-    name, desc, categoryId, deadline, deadlineTime, photo, cost, currency: cur, rate, margin, extra, price, specs,
+    name, desc, sourceUrl, categoryId, deadline, deadlineTime, photo, cost, currency: cur, rate, margin, extra, price, specs,
     specCategories: JSON.parse(JSON.stringify(specCategories)) // Deep clone categories to preserve editing state
   };
 
@@ -2139,6 +2301,7 @@ function openProductDetail(id){
     <div class="card">
       <div class="form-group"><label>商品名稱</label><div style="font-size:15px; font-weight:600;">${p.name}</div></div>
       <div class="form-group"><label>描述</label><div style="font-size:13px; color:var(--text-secondary); white-space:pre-wrap;">${p.desc||'無商品描述'}</div></div>
+      ${p.sourceUrl?`<div class="form-group"><label>採購來源</label><a href="${p.sourceUrl}" target="_blank" rel="noopener" style="font-size:13px;color:var(--warm-600);font-weight:600;word-break:break-all">${p.sourceUrl} ↗</a></div>`:''}
       <div class="form-row" style="margin-top:10px;">
         <div class="form-group"><label>分類</label><div style="font-size:13px;">${cat ? cat.name : '未分類'}</div></div>
         <div class="form-group"><label>截止時間</label><div style="font-size:13px;">${p.deadline ? (p.deadline + ' ' + (p.deadlineTime || '')) : '無截止時間'}</div></div>
@@ -2168,6 +2331,7 @@ function openEditProduct(id) {
   // Populate Basic fields
   document.getElementById('p-name').value = p.name || '';
   document.getElementById('p-desc').value = p.desc || '';
+  document.getElementById('p-source-url').value = p.sourceUrl || '';
   document.getElementById('p-deadline').value = p.deadline || '';
   document.getElementById('p-deadline-time').value = p.deadlineTime || '23:59';
   
@@ -2236,6 +2400,9 @@ function deleteProduct(id){
 // ORDERS
 // ══════════════════════════════════════════
 let currentOrderTab='pending';
+let orderFilterCustomerId='';
+let orderFilterProductId='';
+
 function switchOrderTab(tab,el){
   currentOrderTab=tab;
   document.querySelectorAll('#orderTabBar .tab-btn').forEach(b=>b.classList.remove('active'));
@@ -2243,12 +2410,47 @@ function switchOrderTab(tab,el){
   renderOrders(tab);
 }
 
+// 依目前的客戶／商品清單重新填入篩選下拉選單，並保留使用者原本選取的值
+function populateOrderFilters(){
+  const custSel=document.getElementById('orderFilterCustomer');
+  const prodSel=document.getElementById('orderFilterProduct');
+  if(!custSel||!prodSel)return;
+  const curCust=custSel.value, curProd=prodSel.value;
+  custSel.innerHTML='<option value="">全部客戶</option>'+DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const products=DB.products.filter(p=>!DB.currentPeriod||p.periodId===DB.currentPeriod);
+  prodSel.innerHTML='<option value="">全部商品</option>'+products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  custSel.value=curCust;
+  prodSel.value=curProd;
+}
+
+function applyOrderFilters(){
+  orderFilterCustomerId=document.getElementById('orderFilterCustomer').value;
+  orderFilterProductId=document.getElementById('orderFilterProduct').value;
+  renderOrders(currentOrderTab);
+}
+
+function clearOrderFilters(){
+  orderFilterCustomerId='';
+  orderFilterProductId='';
+  const c=document.getElementById('orderFilterCustomer');if(c)c.value='';
+  const p=document.getElementById('orderFilterProduct');if(p)p.value='';
+  renderOrders(currentOrderTab);
+}
+
 function renderOrders(tab){
+  populateOrderFilters();
   let orders=DB.orders.filter(o=>o.status===tab);
   if(DB.currentPeriod)orders=orders.filter(o=>o.periodId===DB.currentPeriod);
+  if(orderFilterCustomerId)orders=orders.filter(o=>o.customerId===orderFilterCustomerId);
+  if(orderFilterProductId){
+    orders=orders.filter(o=>{
+      if(o.items&&o.items.length)return o.items.some(it=>it.productId===orderFilterProductId);
+      return o.productId===orderFilterProductId;
+    });
+  }
   const el=document.getElementById('ordersList');
   if(!orders.length){
-    el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>此分類暫無訂單</p></div>';
+    el.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>${(orderFilterCustomerId||orderFilterProductId)?'沒有符合篩選條件的訂單':'此分類暫無訂單'}</p></div>`;
     return;
   }
   
@@ -3066,7 +3268,8 @@ function renderPurchase(){
             name: item.productName+(item.specLabel?' ('+item.specLabel+')':''),
             qty: 0,
             unitCost: item.costTWD||0,
-            id: key
+            id: key,
+            productId: item.productId
           };
         }
         qtyMap[key].qty+=(item.qty||1);
@@ -3079,59 +3282,140 @@ function renderPurchase(){
           name: o.productName+(o.specLabel?' ('+o.specLabel+')':''),
           qty: 0,
           unitCost: o.costTWD||0,
-          id: key
+          id: key,
+          productId: o.productId
         };
       }
       qtyMap[key].qty+=(o.qty||1);
     }
   });
   
-  // 每個品項的採購狀態獨立存在 DB.procurement，跟商品/訂單本身脫鉤
+  // 每個品項的採購進度獨立存在 DB.procurement，跟商品/訂單本身脫鉤
+  // 用「數量」而非單一開關記錄：已採購幾個、斷貨幾個，未採購數量自動算出，同一品項需求多件時才能看出還差幾個
+  // 同時附加商品的分類／照片／採購來源連結，供批貨時分組顯示與一鍵開啟賣場
   const items=Object.values(qtyMap).map(it=>{
     const st=DB.procurement[it.id]||{};
-    return {...it, bought:!!st.bought, outOfStock:!!st.outOfStock};
+    let boughtQty, outOfStockQty;
+    if(typeof st.boughtQty==='number' || typeof st.outOfStockQty==='number'){
+      boughtQty=st.boughtQty||0;
+      outOfStockQty=st.outOfStockQty||0;
+    } else {
+      // 相容舊版布林格式（bought/outOfStock 開關）
+      boughtQty = st.bought ? it.qty : 0;
+      outOfStockQty = st.outOfStock ? it.qty : 0;
+    }
+    // 防呆：避免舊資料或手動輸入造成加總超過需求數量
+    if(boughtQty+outOfStockQty>it.qty){
+      outOfStockQty=Math.max(0,it.qty-boughtQty);
+    }
+    const remaining=Math.max(0,it.qty-boughtQty-outOfStockQty);
+    const prod=DB.products.find(p=>p.id===it.productId);
+    return {
+      ...it,
+      boughtQty, outOfStockQty, remaining,
+      photo: prod&&prod.photo?prod.photo:'',
+      sourceUrl: prod&&prod.sourceUrl?prod.sourceUrl:'',
+      categoryId: prod?prod.categoryId:''
+    };
   });
   const el=document.getElementById('purchaseList');
+  const sumEl=document.getElementById('purchaseSummary');
   if(!items.length){
     el.innerHTML='<div class="empty-state" style="padding:24px 0"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--warm-300)" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg><p>結單後系統將自動匯整採購清單</p></div>';
     document.getElementById('totalProcCost').textContent='NT$ 0';
+    if(sumEl)sumEl.style.display='none';
     return;
   }
-  
-  el.innerHTML=items.map(item=>`
-    <div class="proc-row" id="proc-${item.id}">
-      <div class="proc-check ${item.bought?' checked':''}" onclick="toggleProcCheck('${item.id}', this)">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+
+  // 總覽：一眼看出總共應採購/已買到/未買到/斷貨各幾件，不用逐行加總
+  if(sumEl){
+    sumEl.style.display='grid';
+    const totalNeed=items.reduce((s,i)=>s+i.qty,0);
+    const totalBought=items.reduce((s,i)=>s+i.boughtQty,0);
+    const totalRemaining=items.reduce((s,i)=>s+i.remaining,0);
+    const totalOOS=items.reduce((s,i)=>s+i.outOfStockQty,0);
+    document.getElementById('sumTotalNeed').textContent=totalNeed;
+    document.getElementById('sumBought').textContent=totalBought;
+    document.getElementById('sumRemaining').textContent=totalRemaining;
+    document.getElementById('sumOOS').textContent=totalOOS;
+  }
+
+  // 依商品分類分組：批貨時通常是「一個分類／一個賣場」一次買齊，分組後不用整頁上下滑動比對
+  const groups={};
+  items.forEach(it=>{
+    const gid=it.categoryId||'__none__';
+    if(!groups[gid])groups[gid]=[];
+    groups[gid].push(it);
+  });
+  const groupIds=[...DB.categories.map(c=>c.id).filter(id=>groups[id]), ...(groups['__none__']?['__none__']:[])];
+
+  el.innerHTML=groupIds.map(gid=>{
+    const cat=DB.categories.find(c=>c.id===gid);
+    const groupName=cat?cat.name:'未分類商品';
+    const groupItems=groups[gid];
+    const doneCount=groupItems.filter(i=>i.remaining===0).length;
+    return `
+    <div class="proc-group" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px">
+        <div class="section-label" style="margin-bottom:0">${groupName}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${doneCount}/${groupItems.length} 已完成</div>
       </div>
-      <div class="proc-qty-box">×${item.qty}</div>
-      <div class="list-info">
-        <div class="list-name ${item.outOfStock?'line-through text-muted':''}">${item.name}</div>
-        <div style="font-size:11px;color:var(--text-muted)">單位成本 NT$ ${(item.unitCost||0).toLocaleString()}</div>
-      </div>
-      <div>
-        <select style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:#fff;color:var(--text-secondary)" onchange="setProcStatus('${item.id}',this.value)">
-          <option value="pending" ${(!item.bought && !item.outOfStock)?'selected':''}>進行中</option>
-          <option value="bought" ${item.bought?'selected':''}>已採購</option>
-          <option value="outofstock" ${item.outOfStock?'selected':''}>斷貨/未買到</option>
-        </select>
-      </div>
-    </div>
-  `).join('');
-  
-  const totalCost=items.filter(i=>!i.outOfStock).reduce((s,i)=>s+i.unitCost*i.qty,0);
+      ${groupItems.map(item=>{
+        let badge;
+        if(item.remaining===0 && item.outOfStockQty===0) badge=`<span class="proc-badge proc-badge-done">已買齊 ${item.boughtQty}</span>`;
+        else if(item.remaining===0 && item.outOfStockQty>0 && item.boughtQty>0) badge=`<span class="proc-badge proc-badge-mixed">買到${item.boughtQty}・斷貨${item.outOfStockQty}</span>`;
+        else if(item.remaining===0 && item.outOfStockQty===item.qty) badge=`<span class="proc-badge proc-badge-oos">全部斷貨</span>`;
+        else badge=`<span class="proc-badge proc-badge-pending">還缺 ${item.remaining}</span>`;
+        return `
+        <div class="proc-row2" id="proc-${item.id}">
+          <div class="proc-row2-top">
+            <div class="list-thumb">${item.photo?`<img src="${item.photo}">`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}</div>
+            <div class="proc-qty-box">需 ${item.qty}</div>
+            <div class="list-info">
+              <div class="list-name">${item.name}</div>
+              <div style="font-size:11px;color:var(--text-muted)">單位成本 NT$ ${(item.unitCost||0).toLocaleString()}</div>
+            </div>
+            ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="flex:0 0 auto;padding:6px 8px" title="前往採購賣場"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`:''}
+            ${badge}
+          </div>
+          <div class="proc-row2-controls">
+            <div class="proc-qty-field">
+              <label>已採購</label>
+              <input type="number" min="0" max="${item.qty}" value="${item.boughtQty}" onchange="setProcQty('${item.id}','bought',this.value,${item.qty})">
+            </div>
+            <div class="proc-qty-field">
+              <label>斷貨</label>
+              <input type="number" min="0" max="${item.qty}" value="${item.outOfStockQty}" onchange="setProcQty('${item.id}','outOfStock',this.value,${item.qty})">
+            </div>
+            <div class="proc-qty-field proc-qty-remaining">
+              <label>未採購</label>
+              <div class="proc-remaining-val">${item.remaining}</div>
+            </div>
+            <button class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="setProcQty('${item.id}','bought',${item.qty},${item.qty})">全部買到</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  const totalCost=items.reduce((s,i)=>s+i.unitCost*(i.boughtQty+i.remaining),0);
   document.getElementById('totalProcCost').textContent='NT$ '+Math.round(totalCost).toLocaleString();
 }
 
-function toggleProcCheck(id, el){
-  const isChecked = el.classList.toggle('checked');
-  setProcStatus(id, isChecked ? 'bought' : 'pending');
-}
-
-async function setProcStatus(id, val){
-  DB.procurement[id] = {
-    bought: val === 'bought',
-    outOfStock: val === 'outofstock'
-  };
+async function setProcQty(id, field, value, maxQty){
+  let n=parseInt(value);
+  if(isNaN(n)||n<0)n=0;
+  if(n>maxQty)n=maxQty;
+  const cur=DB.procurement[id]||{};
+  let boughtQty = (typeof cur.boughtQty==='number')?cur.boughtQty:(cur.bought?maxQty:0);
+  let outOfStockQty = (typeof cur.outOfStockQty==='number')?cur.outOfStockQty:(cur.outOfStock?maxQty:0);
+  if(field==='bought')boughtQty=n; else outOfStockQty=n;
+  // 兩者加總不可超過總需求量：以剛剛編輯的欄位為準，自動調整另一欄
+  if(boughtQty+outOfStockQty>maxQty){
+    if(field==='bought')outOfStockQty=Math.max(0,maxQty-boughtQty);
+    else boughtQty=Math.max(0,maxQty-outOfStockQty);
+  }
+  DB.procurement[id]={boughtQty,outOfStockQty};
   await save('procurement', DB.procurement);
   renderPurchase();
   renderHome();
@@ -3388,7 +3672,8 @@ function toggleDetailOrderPaymentFields() {
     onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    initializeFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot
+    initializeFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot,
+    collection, getDocs
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -3412,7 +3697,7 @@ function toggleDetailOrderPaymentFields() {
   window.fgmAuth = auth;
   window.fgmDb = db;
   window.fgmAuthFns = { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut };
-  window.fgmFirestore = { doc, getDoc, setDoc, deleteDoc, onSnapshot };
+  window.fgmFirestore = { doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs };
 
   // 通知外層腳本 Firebase 已就緒
   window.dispatchEvent(new Event('fgm-firebase-ready'));
