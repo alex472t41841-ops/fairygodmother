@@ -1494,7 +1494,7 @@ async function loadAllDataAndInit(user){
     DB.currentPeriod=periodSnap.exists()?(periodSnap.data().value||null):null;
   }catch(e){
     console.error(e);
-    showToast('雲端資料讀取失敗，請確認網路連線後重新整理');
+    showToast('雲端資料讀取失敗：'+((e&&e.message)||e));
   }
 
   // Defaults on first-ever login
@@ -3309,7 +3309,8 @@ function renderPurchase(){
       outOfStockQty=Math.max(0,it.qty-boughtQty);
     }
     const remaining=Math.max(0,it.qty-boughtQty-outOfStockQty);
-    const prod=DB.products.find(p=>p.id===it.productId);
+    const prodList=Array.isArray(DB.products)?DB.products:[];
+    const prod=prodList.find(p=>p.id===it.productId);
     return {
       ...it,
       boughtQty, outOfStockQty, remaining,
@@ -3341,62 +3342,68 @@ function renderPurchase(){
   }
 
   // 依商品分類分組：批貨時通常是「一個分類／一個賣場」一次買齊，分組後不用整頁上下滑動比對
+  const cats=Array.isArray(DB.categories)?DB.categories:[];
   const groups={};
   items.forEach(it=>{
     const gid=it.categoryId||'__none__';
     if(!groups[gid])groups[gid]=[];
     groups[gid].push(it);
   });
-  const groupIds=[...DB.categories.map(c=>c.id).filter(id=>groups[id]), ...(groups['__none__']?['__none__']:[])];
+  const groupIds=[...cats.map(c=>c.id).filter(id=>groups[id]), ...(groups['__none__']?['__none__']:[])];
 
-  el.innerHTML=groupIds.map(gid=>{
-    const cat=DB.categories.find(c=>c.id===gid);
-    const groupName=cat?cat.name:'未分類商品';
-    const groupItems=groups[gid];
-    const doneCount=groupItems.filter(i=>i.remaining===0).length;
-    return `
-    <div class="proc-group" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px">
-        <div class="section-label" style="margin-bottom:0">${groupName}</div>
-        <div style="font-size:11px;color:var(--text-muted)">${doneCount}/${groupItems.length} 已完成</div>
-      </div>
-      ${groupItems.map(item=>{
-        let badge;
-        if(item.remaining===0 && item.outOfStockQty===0) badge=`<span class="proc-badge proc-badge-done">已買齊 ${item.boughtQty}</span>`;
-        else if(item.remaining===0 && item.outOfStockQty>0 && item.boughtQty>0) badge=`<span class="proc-badge proc-badge-mixed">買到${item.boughtQty}・斷貨${item.outOfStockQty}</span>`;
-        else if(item.remaining===0 && item.outOfStockQty===item.qty) badge=`<span class="proc-badge proc-badge-oos">全部斷貨</span>`;
-        else badge=`<span class="proc-badge proc-badge-pending">還缺 ${item.remaining}</span>`;
-        return `
-        <div class="proc-row2" id="proc-${item.id}">
-          <div class="proc-row2-top">
-            <div class="list-thumb">${item.photo?`<img src="${item.photo}">`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}</div>
-            <div class="proc-qty-box">需 ${item.qty}</div>
-            <div class="list-info">
-              <div class="list-name">${item.name}</div>
-              <div style="font-size:11px;color:var(--text-muted)">單位成本 NT$ ${(item.unitCost||0).toLocaleString()}</div>
+  try{
+    el.innerHTML=groupIds.map(gid=>{
+      const cat=cats.find(c=>c.id===gid);
+      const groupName=cat?cat.name:'未分類商品';
+      const groupItems=groups[gid];
+      const doneCount=groupItems.filter(i=>i.remaining===0).length;
+      return `
+      <div class="proc-group" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px">
+          <div class="section-label" style="margin-bottom:0">${groupName}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${doneCount}/${groupItems.length} 已完成</div>
+        </div>
+        ${groupItems.map(item=>{
+          let badge;
+          if(item.remaining===0 && item.outOfStockQty===0) badge=`<span class="proc-badge proc-badge-done">已買齊 ${item.boughtQty}</span>`;
+          else if(item.remaining===0 && item.outOfStockQty>0 && item.boughtQty>0) badge=`<span class="proc-badge proc-badge-mixed">買到${item.boughtQty}・斷貨${item.outOfStockQty}</span>`;
+          else if(item.remaining===0 && item.outOfStockQty===item.qty) badge=`<span class="proc-badge proc-badge-oos">全部斷貨</span>`;
+          else badge=`<span class="proc-badge proc-badge-pending">還缺 ${item.remaining}</span>`;
+          return `
+          <div class="proc-row2" id="proc-${item.id}">
+            <div class="proc-row2-top">
+              <div class="list-thumb">${item.photo?`<img src="${item.photo}">`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}</div>
+              <div class="proc-qty-box">需 ${item.qty}</div>
+              <div class="list-info">
+                <div class="list-name">${item.name}</div>
+                <div style="font-size:11px;color:var(--text-muted)">單位成本 NT$ ${(item.unitCost||0).toLocaleString()}</div>
+              </div>
+              ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="flex:0 0 auto;padding:6px 8px" title="前往採購賣場"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`:''}
+              ${badge}
             </div>
-            ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="flex:0 0 auto;padding:6px 8px" title="前往採購賣場"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`:''}
-            ${badge}
-          </div>
-          <div class="proc-row2-controls">
-            <div class="proc-qty-field">
-              <label>已採購</label>
-              <input type="number" min="0" max="${item.qty}" value="${item.boughtQty}" onchange="setProcQty('${item.id}','bought',this.value,${item.qty})">
+            <div class="proc-row2-controls">
+              <div class="proc-qty-field">
+                <label>已採購</label>
+                <input type="number" min="0" max="${item.qty}" value="${item.boughtQty}" onchange="setProcQty('${item.id}','bought',this.value,${item.qty})">
+              </div>
+              <div class="proc-qty-field">
+                <label>斷貨</label>
+                <input type="number" min="0" max="${item.qty}" value="${item.outOfStockQty}" onchange="setProcQty('${item.id}','outOfStock',this.value,${item.qty})">
+              </div>
+              <div class="proc-qty-field proc-qty-remaining">
+                <label>未採購</label>
+                <div class="proc-remaining-val">${item.remaining}</div>
+              </div>
+              <button class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="setProcQty('${item.id}','bought',${item.qty},${item.qty})">全部買到</button>
             </div>
-            <div class="proc-qty-field">
-              <label>斷貨</label>
-              <input type="number" min="0" max="${item.qty}" value="${item.outOfStockQty}" onchange="setProcQty('${item.id}','outOfStock',this.value,${item.qty})">
-            </div>
-            <div class="proc-qty-field proc-qty-remaining">
-              <label>未採購</label>
-              <div class="proc-remaining-val">${item.remaining}</div>
-            </div>
-            <button class="btn btn-outline btn-sm" style="flex:0 0 auto" onclick="setProcQty('${item.id}','bought',${item.qty},${item.qty})">全部買到</button>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }).join('');
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error('renderPurchase 渲染失敗', e);
+    el.innerHTML=`<div class="empty-state" style="padding:20px 0;color:var(--red)"><p style="font-weight:700">採購清單顯示發生錯誤</p><p style="font-size:12px;color:var(--text-muted);margin-top:6px;word-break:break-all">${(e&&e.message)||e}</p><p style="font-size:11px;color:var(--text-muted);margin-top:8px">請截圖這段文字回報</p></div>`;
+  }
 
   const totalCost=items.reduce((s,i)=>s+i.unitCost*(i.boughtQty+i.remaining),0);
   document.getElementById('totalProcCost').textContent='NT$ '+Math.round(totalCost).toLocaleString();
