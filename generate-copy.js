@@ -1,108 +1,80 @@
 // netlify/functions/generate-copy.js
 //
-// 這支程式「不是」跑在使用者的瀏覽器裡，是跑在 Netlify 的伺服器上。
-// GEMINI_API_KEY 只存在 Netlify 後台的環境變數裡，永遠不會出現在你的網頁原始碼中，
-// 這樣才不會被任何打開你網站原始碼的人看到、盜用你的金鑰額度。
-//
-// 你的正式網站還是繼續放在 GitHub Pages，這支函式單獨放在 Netlify，
-// 所以網頁呼叫這支函式時是「跨網域」請求，底下有加上 CORS 允許標頭。
-// 如果之後改了網站網域，記得把下面 ALLOWED_ORIGIN 也一起改掉。
-const ALLOWED_ORIGIN = 'https://alex472t41841-ops.github.io';
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  };
-}
+// 用途：依商品名稱、描述、價格、截止時間，生成適合貼到 LINE/社群的代購行銷文案。
+// 前端 generateAICopy() 會送出 { name, desc, price, deadlineStr }，
+// 並預期收到 { text: "生成的文案內容" }。
 
 exports.handler = async function (event) {
-  // 瀏覽器在送出跨網域 POST 前，會先送一個 OPTIONS 請求來「問路」，這裡要正確回應
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders(), body: '' };
+    return { statusCode: 200, headers, body: '' };
   }
 
-  // 只接受 POST 請求
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: corsHeaders(), body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: '尚未設定 GEMINI_API_KEY，請到 Netlify 後台的 Environment variables 設定。' })
-    };
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(event.body || '{}');
-  } catch (e) {
-    return { statusCode: 400, headers: corsHeaders(), body: JSON.stringify({ error: '請求格式錯誤' }) };
-  }
-
-  const name = (payload.name || '商品').toString().slice(0, 200);
-  const desc = (payload.desc || '').toString().slice(0, 2000);
-  const price = (payload.price || '0').toString().slice(0, 50);
-  const deadlineStr = (payload.deadlineStr || '').toString().slice(0, 100);
-
-  if (!desc.trim()) {
-    return { statusCode: 400, headers: corsHeaders(), body: JSON.stringify({ error: '請提供商品描述' }) };
-  }
-
-  const prompt = `你是台灣一位私群團購代購主，正在幫自己的商品寫一段要貼在 LINE / Facebook 社團的行銷文案。
-
-商品名稱：${name}
-商品描述／核心賣點：${desc}
-售價：新台幣 ${price} 元
-${deadlineStr ? '截止收單時間：' + deadlineStr : ''}
-
-請直接輸出一段繁體中文、口吻熱情親切、適合台灣代購社群的行銷文案，長度約 120-200 字。
-內容需包含：吸引人的開頭、根據上述賣點的介紹、售價、${deadlineStr ? '截止時間、' : ''}以及提醒大家在留言處登記「姓名 + 規格 + 數量」。
-最後加上 1-2 個相關的中文 hashtag（例如 #代購）。
-只要輸出文案本身，不要加上任何說明文字、不要用引號包住整段文字。`;
 
   try {
-    const resp = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+    const { name, desc, price, deadlineStr } = JSON.parse(event.body || '{}');
+
+    if (!desc) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: '缺少商品描述' }) };
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'GEMINI_API_KEY 未設定，請至 Netlify 環境變數確認' }) };
+    }
+
+    const prompt = `你是「Fairy godmother代購」的社群小編，請根據以下商品資訊，寫一則要貼到 LINE 群組/社群的代購貼文文案，用繁體中文，語氣自然、親切、有點小興奮感，適度使用表情符號但不要過多。
+
+商品名稱：${name || '商品'}
+商品描述／賣點：${desc}
+售價：NT$ ${price || '0'}
+${deadlineStr ? '截止時間：' + deadlineStr : ''}
+
+文案需包含：
+1. 一個吸引人的開頭（可以用商品名稱＋表情符號）
+2. 用 1~2 句話講出這個商品的賣點，語氣自然不要像廣告詞
+3. 清楚列出售價${deadlineStr ? '與截止時間' : ''}
+4. 提醒有需要的人在留言處登記，並給出登記格式範例「姓名 + 規格 + 數量」
+5. 結尾加上「Fairy godmother代購」和 1~2 個 # 標籤
+
+請「只」輸出文案本身的純文字內容，不要加上任何說明文字或 Markdown 符號。`;
+
+    const model = 'gemini-2.5-flash';
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.8, maxOutputTokens: 500 }
         })
       }
     );
 
-    const data = await resp.json();
+    const geminiData = await geminiResp.json();
 
-    if (!resp.ok) {
-      console.error('Gemini API error', data);
-      return {
-        statusCode: 502,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: 'AI 服務回應失敗：' + (data.error?.message || resp.statusText) })
-      };
+    if (!geminiResp.ok) {
+      console.error('Gemini API error', JSON.stringify(geminiData));
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'AI 服務回應錯誤，請稍後再試' }) };
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text = (geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
     if (!text) {
-      return { statusCode: 502, headers: corsHeaders(), body: JSON.stringify({ error: 'AI 沒有回傳可用的文案內容，請再試一次。' }) };
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'AI 沒有回傳內容，請稍後再試' }) };
     }
 
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    };
-  } catch (e) {
-    console.error(e);
-    return { statusCode: 500, headers: corsHeaders(), body: JSON.stringify({ error: '呼叫 AI 服務時發生錯誤：' + e.message }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ text }) };
+  } catch (err) {
+    console.error('generate-copy function error', err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message || '未知錯誤' }) };
   }
 };
