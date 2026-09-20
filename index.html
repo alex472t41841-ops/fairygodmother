@@ -720,6 +720,11 @@ select.form-control{cursor:pointer}
           <img id="p-photo-img" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--border)">
           <button onclick="deleteUploadedPhoto()" style="position:absolute; top:-6px; right:-6px; background:var(--red); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.2);" title="刪除照片">×</button>
         </div>
+        <button class="btn btn-outline btn-sm" id="btn-ai-analyze-photo" style="margin-top:10px;display:none" onclick="analyzeProductPhoto()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>
+          AI 辨識照片內容，自動帶入名稱與描述
+        </button>
+        <div id="aiAnalyzeStatus" style="font-size:12px;color:var(--text-muted);margin-top:6px;display:none"></div>
       </div>
     </div>
 
@@ -1896,6 +1901,8 @@ function openAddProduct(){
   document.getElementById('p-deadline').value='';
   document.getElementById('p-photo-preview').style.display='none';
   document.getElementById('p-photo-img').removeAttribute('src');
+  document.getElementById('btn-ai-analyze-photo').style.display='none';
+  document.getElementById('aiAnalyzeStatus').style.display='none';
   document.getElementById('aiCopyResult').style.display='none';
   document.getElementById('specCategoryWrap').innerHTML='';
   document.getElementById('specPricingGrid').innerHTML='';
@@ -1925,14 +1932,98 @@ function switchProductTab(tab,el){
   if(el){document.querySelectorAll('#modalAddProduct .tab-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
 }
 
-function previewProductPhoto(input){
-  if(input.files&&input.files[0]){
+// 圖片壓縮：在瀏覽器端把手機拍的原圖（常常好幾 MB）縮小、壓縮後才轉成 base64
+// 這樣存進 Firestore 免費方案的 1GB 上限前，可以撐久很多（一張手機原圖可能是壓縮後的 20~50 倍大）
+function compressImageFile(file, maxDim=900, quality=0.72){
+  return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=function(e){
-      document.getElementById('p-photo-img').src=e.target.result;
-      document.getElementById('p-photo-preview').style.display='block';
+      const img=new Image();
+      img.onload=function(){
+        let w=img.width, h=img.height;
+        if(w>maxDim||h>maxDim){
+          if(w>=h){ h=Math.round(h*(maxDim/w)); w=maxDim; }
+          else { w=Math.round(w*(maxDim/h)); h=maxDim; }
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror=()=>reject(new Error('圖片格式無法讀取'));
+      img.src=e.target.result;
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.onerror=()=>reject(new Error('檔案讀取失敗'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewProductPhoto(input){
+  if(input.files&&input.files[0]){
+    try{
+      const compressed=await compressImageFile(input.files[0]);
+      document.getElementById('p-photo-img').src=compressed;
+      document.getElementById('p-photo-preview').style.display='block';
+    }catch(e){
+      console.error('圖片壓縮失敗，改用原圖', e);
+      // 壓縮失敗時退回存原圖，至少功能不會整個卡住（但這種情況下該張圖片會比較佔空間）
+      const reader=new FileReader();
+      reader.onload=function(e2){
+        document.getElementById('p-photo-img').src=e2.target.result;
+        document.getElementById('p-photo-preview').style.display='block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+    const btn=document.getElementById('btn-ai-analyze-photo');
+    if(btn)btn.style.display='inline-flex';
+    const statusEl=document.getElementById('aiAnalyzeStatus');
+    if(statusEl)statusEl.style.display='none';
+  }
+}
+
+// ⚠️ 部署 Netlify 後，把下面網址換成你自己的 Netlify 網址（跟 AI_PROXY_URL 同一個網站，換成 analyze-photo 這個函式）
+const AI_ANALYZE_URL = 'https://YOUR-NETLIFY-SITE-NAME.netlify.app/.netlify/functions/analyze-photo';
+
+// 拍照現場建單專用：把已經壓縮好的商品照片丟給 Gemini 辨識，自動帶出商品名稱與描述，
+// 省去現場一邊逛街一邊打字的時間。只在欄位是空的時候才自動帶入，不會覆蓋掉已經手動填寫的內容。
+async function analyzeProductPhoto(){
+  const imgEl=document.getElementById('p-photo-img');
+  if(!imgEl||!imgEl.src||!imgEl.src.startsWith('data:')){
+    showToast('請先拍照或選擇一張商品照片');
+    return;
+  }
+  const statusEl=document.getElementById('aiAnalyzeStatus');
+  const btn=document.getElementById('btn-ai-analyze-photo');
+  statusEl.style.display='block';
+  statusEl.style.color='var(--text-muted)';
+  statusEl.textContent='✨ AI 辨識中，請稍候…';
+  if(btn)btn.disabled=true;
+  try{
+    const commaIdx=imgEl.src.indexOf(',');
+    const mimeType=imgEl.src.substring(5, imgEl.src.indexOf(';'));
+    const base64Data=imgEl.src.substring(commaIdx+1);
+    const resp=await fetch(AI_ANALYZE_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image:base64Data, mimeType})
+    });
+    const data=await resp.json();
+    if(!resp.ok || (!data.name && !data.desc)){
+      throw new Error(data.error||'AI 辨識失敗');
+    }
+    const nameEl=document.getElementById('p-name');
+    const descEl=document.getElementById('p-desc');
+    if(data.name && !nameEl.value.trim()) nameEl.value=data.name;
+    if(data.desc && !descEl.value.trim()) descEl.value=data.desc;
+    statusEl.textContent='✅ 已自動帶入名稱與描述，請檢查並視需要修改';
+    showToast('AI 辨識完成，請確認內容是否正確');
+  }catch(e){
+    console.error('AI 照片辨識失敗', e);
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='AI 辨識暫時無法使用，請手動輸入商品名稱與描述';
+    showToast('AI 辨識失敗，請確認 Netlify 函式與 API 金鑰是否設定完成');
+  }finally{
+    if(btn)btn.disabled=false;
   }
 }
 
@@ -1942,6 +2033,10 @@ function deleteUploadedPhoto() {
   document.getElementById('p-photo-preview').style.display = 'none';
   document.getElementById('p-photo-cam').value = '';
   document.getElementById('p-photo-lib').value = '';
+  const btn=document.getElementById('btn-ai-analyze-photo');
+  if(btn)btn.style.display='none';
+  const statusEl=document.getElementById('aiAnalyzeStatus');
+  if(statusEl)statusEl.style.display='none';
   showToast('商品照片已清除');
 }
 
@@ -2343,10 +2438,13 @@ function openEditProduct(id) {
   if (p.photo) {
     document.getElementById('p-photo-img').src = p.photo;
     document.getElementById('p-photo-preview').style.display = 'block';
+    document.getElementById('btn-ai-analyze-photo').style.display='inline-flex';
   } else {
     document.getElementById('p-photo-img').removeAttribute('src');
     document.getElementById('p-photo-preview').style.display = 'none';
+    document.getElementById('btn-ai-analyze-photo').style.display='none';
   }
+  document.getElementById('aiAnalyzeStatus').style.display='none';
   
   // Populate pricing parameters
   document.getElementById('p-cost').value = p.cost || '';
@@ -3526,16 +3624,18 @@ async function saveAllSettings(){
   showToast('設定已儲存！');
 }
 
-function uploadLogo(input){
+async function uploadLogo(input){
   if(input.files&&input.files[0]){
-    const reader=new FileReader();
-    reader.onload=async function(e){
-      DB.settings.logoData=e.target.result;
+    try{
+      const compressed=await compressImageFile(input.files[0], 400, 0.8);
+      DB.settings.logoData=compressed;
       await save('settings',DB.settings);
-      const img=document.createElement('img');img.src=e.target.result;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';
+      const img=document.createElement('img');img.src=compressed;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:12px';
       document.getElementById('logoDisplay').innerHTML='';document.getElementById('logoDisplay').appendChild(img);
-    };
-    reader.readAsDataURL(input.files[0]);
+    }catch(e){
+      console.error('Logo 圖片處理失敗', e);
+      showToast('圖片處理失敗，請換一張圖片試試');
+    }
   }
 }
 
