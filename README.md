@@ -7,5 +7,4 @@ Fairy Godmother 代購後台,五個分頁,照這順序用:
 首頁 — 隨時看營收、毛利、熱銷商品
 
 ⚠️ 記得一定要先建檔期,不然商品跟訂單功能都用不了。
-
 AQ.Ab8RN6Igs8v7VupzW5T8kxB-NW1bD01547nWTPI_CYwD_XuQ4A
