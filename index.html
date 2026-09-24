@@ -1982,7 +1982,7 @@ async function previewProductPhoto(input){
 }
 
 // ⚠️ 部署 Netlify 後，把下面網址換成你自己的 Netlify 網址（跟 AI_PROXY_URL 同一個網站，換成 analyze-photo 這個函式）
-const AI_ANALYZE_URL = 'https://YOUR-NETLIFY-SITE-NAME.netlify.app/.netlify/functions/analyze-photo';
+const AI_ANALYZE_URL = 'https://boisterous-sable-c7c150.netlify.app/.netlify/functions/analyze-photo';
 
 // 拍照現場建單專用：把已經壓縮好的商品照片丟給 Gemini 辨識，自動帶出商品名稱與描述，
 // 省去現場一邊逛街一邊打字的時間。只在欄位是空的時候才自動帶入，不會覆蓋掉已經手動填寫的內容。
@@ -2020,8 +2020,8 @@ async function analyzeProductPhoto(){
   }catch(e){
     console.error('AI 照片辨識失敗', e);
     statusEl.style.color='var(--red)';
-    statusEl.textContent='AI 辨識暫時無法使用，請手動輸入商品名稱與描述';
-    showToast('AI 辨識失敗，請確認 Netlify 函式與 API 金鑰是否設定完成');
+    statusEl.textContent='AI 辨識失敗：'+((e&&e.message)?e.message:String(e))+'（請截圖這段文字回報）';
+    showToast('AI 辨識失敗，請截圖狀態文字回報');
   }finally{
     if(btn)btn.disabled=false;
   }
@@ -2229,7 +2229,7 @@ function openCompare(urlPrefix){
 // AI Copy
 // ⚠️ 部署 Netlify 後，把下面網址換成你自己的 Netlify 網址
 // （在 Netlify 後台首頁最上面可以看到，通常長得像 https://xxxxx.netlify.app）
-const AI_PROXY_URL = 'https://YOUR-NETLIFY-SITE-NAME.netlify.app/.netlify/functions/generate-copy';
+const AI_PROXY_URL = 'https://boisterous-sable-c7c150.netlify.app/.netlify/functions/generate-copy';
 
 // 內建樣板文案：當 AI 服務還沒設定好、或暫時連不上時的備用方案，確保功能不會整個掛掉
 function buildFallbackCopy(name, desc, price, deadlineStr){
@@ -2273,7 +2273,8 @@ async function generateAICopy(){
   }catch(e){
     console.error('AI 文案生成失敗，改用內建樣板文案',e);
     resultEl.textContent=buildFallbackCopy(name,desc,price,deadlineStr);
-    showToast('AI 服務暫時無法使用，已改用內建樣板文案（請確認 Netlify 函式與 API 金鑰是否設定完成）');
+    const errMsg=(e&&e.message)?e.message:String(e);
+    showToast('AI 服務暫時無法使用，已改用內建樣板文案（錯誤原因：'+errMsg+'）');
   }
 }
 function copyAIText(){
