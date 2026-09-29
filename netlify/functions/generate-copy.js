@@ -64,7 +64,8 @@ ${deadlineStr ? '截止時間：' + deadlineStr : ''}
 
     if (!geminiResp.ok) {
       console.error('Gemini API error', JSON.stringify(geminiData));
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'AI 服務回應錯誤，請稍後再試' }) };
+      const detail = (geminiData && geminiData.error && geminiData.error.message) ? String(geminiData.error.message).slice(0, 200) : '';
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'AI 服務回應錯誤（Gemini 狀態 ' + geminiResp.status + '）' + (detail ? '：' + detail : '') }) };
     }
 
     const text = (geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
